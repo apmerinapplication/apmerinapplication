@@ -31,6 +31,6 @@ async function withActionFeedback(event,action){
   if(button?.disabled)return;
   let old,disabled;
   if(button){old=button.innerHTML;disabled=button.disabled;button.disabled=true;button.setAttribute('aria-busy','true');button.innerHTML='<span class="loading-spinner" aria-hidden="true"></span> Please wait…';}
-  const end=beginLoading(event?.type==='submit'?'Saving your changes…':'Working on your request…');
+  const end=event?beginLoading(event.type==='submit'?'Saving your changes…':'Working on your request…'):()=>{};
   try{return await action(event);}finally{end();if(button){button.innerHTML=old;button.disabled=disabled;button.removeAttribute('aria-busy');}}
 }

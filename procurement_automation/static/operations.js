@@ -1,11 +1,11 @@
 /* Team ownership, reference imports and daily work. */
 let allReminders=[];
-let lastMailCheck='';
-async function checkMail(check=false){if(!account)return;const s=await api('/mail-sync',check?'POST':'GET',check?{check:true}:undefined);const el=$('mailSyncStatus');if(!el)return;const time=s.completed_at?new Intl.DateTimeFormat('en-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}).format(new Date(s.completed_at)):'';el.textContent=s.status==='queued'?'Email check queued…':s.status==='running'?'Checking Inbox and Sent emails…':s.status==='error'?'Email check failed. See Administration or try again.':time?'Emails checked '+time+' · checks every 10 minutes while signed in':'Email monitoring ready · checks on login and every 10 minutes';if(s.serverless&&(s.pending_imports||['queued','running'].includes(s.status)))void cloudTick();if(s.completed_at&&s.completed_at!==lastMailCheck){const hadPrevious=!!lastMailCheck;lastMailCheck=s.completed_at;if(hadPrevious)await refresh();}}
+let lastMailCheck='',cloudEnabled=false,cloudTickTimer;
+async function checkMail(check=false){if(!account)return;const s=await api('/mail-sync',check?'POST':'GET',check?{check:true}:undefined,{quiet:!check});cloudEnabled=s.serverless===true;const el=$('mailSyncStatus');if(!el)return;const time=s.completed_at?new Intl.DateTimeFormat('en-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}).format(new Date(s.completed_at)):'';el.textContent=s.mailbox_configured===false?'Email connection is not configured. An administrator must connect the mailbox before imports can start.':s.status==='queued'?'Email check queued…':s.status==='running'?'Checking Inbox and Sent emails…':s.status==='error'?'Email check failed. See Administration or try again.':time?'Emails checked '+time+' · checks every 10 minutes while signed in':'Email monitoring ready · checks on login and every 10 minutes';if(s.serverless&&s.mailbox_configured!==false&&(s.pending_imports||['queued','running'].includes(s.status)))void cloudTick();if(s.completed_at&&s.completed_at!==lastMailCheck){const hadPrevious=!!lastMailCheck;lastMailCheck=s.completed_at;if(hadPrevious)await refresh();}}
 $('checkMailNow').onclick=run(()=>checkMail(true));
 const priorSignedIn=signedIn;
 signedIn=async function(data){await priorSignedIn(data);if(account){await api('/mail-sync','POST',{check:true});await checkMail();}};
-setInterval(()=>{if(account)run(()=>api('/mail-sync','POST',{check:false}))();},60000);
+setInterval(()=>{if(account)run(()=>api('/mail-sync','POST',{check:false},{quiet:true}))();},60000);
 setInterval(()=>{if(account)run(()=>checkMail(true))();},600000);
 setInterval(()=>{if(account)run(()=>checkMail())();},10000);
 function showImportSuggestions(j){const section=document.createElement('section');section.className='trial-caution';const drafts=j.suggested_items||[];section.innerHTML=`<h3>Imported evidence · review required</h3><p>${current.messages.length} linked emails. Verify the client, vessel, requisition, item quantities and quotation revisions against the originals before using commercial details.</p>${drafts.length?`<p>${drafts.length} item suggestions from labelled RFQ tables.</p><button id="reviewImportedItems">Review suggested items</button>`:'<p>No reliable RFQ item table detected. Use Review RFQ items after checking the original request.</p>'}<details><summary>Locally extracted document content</summary>${current.messages.flatMap(m=>(m.extractions||[]).map(e=>`<article><strong>${esc(m.attachments?.find(a=>a.hash===e.hash)?.filename||'Document')}</strong><p>${esc(m.subject)}</p>${e.text?`<pre>${esc(e.text)}</pre>`:'<p>Scanned document or unsupported file — review the original preview.</p>'}</article>`)).join('')||'<p>No document text found.</p>'}</details>`;$('dialogContent').prepend(section);if($('reviewImportedItems'))$('reviewImportedItems').onclick=editItems;}
@@ -34,14 +34,15 @@ async function loadImports(){
  importLoadRunning=true;
  try{
   if(importNoticeAccount!==account.id){completedImports.clear();seenImportNotices.clear();importNoticeAccount=account.id;}
-  const data=await api('/job-imports');latestImports=data.imports;const notices=[];
+  const data=await api('/job-imports','GET',undefined,{quiet:true});latestImports=data.imports;const notices=[];
   for(const i of data.imports.filter(i=>i.status==='complete')){
    const key=i.reference+'|'+i.completed_at;
    if(!seenImportNotices.has(key)){seenImportNotices.add(key);completedImports.set(i.reference,{import:i,until:Date.now()+20000});setTimeout(()=>renderImports(latestImports),20000);}
    notices.push({reference:i.reference,completed_at:i.completed_at});
   }
   renderImports(data.imports);
-  if(notices.length)await api('/job-imports/seen','POST',{notices});
+  if(cloudEnabled&&data.imports.some(i=>['queued','running'].includes(i.status)))void cloudTick();
+  if(notices.length)await api('/job-imports/seen','POST',{notices},{quiet:true});
  }finally{importLoadRunning=false;}
 }
 setInterval(()=>{if(account)run(loadImports)();},5000);
@@ -52,12 +53,15 @@ renderActions=function(reminders){baseRenderActions(reminders);$('actions').quer
 let cloudTickRunning=false;
 async function cloudTick(){
  if(cloudTickRunning||!account)return;
- cloudTickRunning=true;
+ cloudTickRunning=true;clearTimeout(cloudTickTimer);
+ let continueSoon=false;
  try{
   const response=await fetch(prefix+'/api/automation/tick',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:'{}'});
   const data=await response.json();
   if(!response.ok||data.status==='error')throw new Error(data.error||'Background check failed');
   if(data.changed&&account)await refresh();
+  await loadImports();
+  continueSoon=data.status==='ok'&&latestImports.some(i=>['queued','running'].includes(i.status));
  }catch(error){if($('mailSyncStatus'))$('mailSyncStatus').textContent='Email processing needs attention. Check Administration or retry.';}
- finally{cloudTickRunning=false;}
+ finally{cloudTickRunning=false;if(continueSoon&&account)cloudTickTimer=setTimeout(()=>void cloudTick(),500);}
 }

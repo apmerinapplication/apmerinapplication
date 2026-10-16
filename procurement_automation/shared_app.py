@@ -130,10 +130,12 @@ def create_app(directory=None, testing=False):
     @app.route('/api/mail-sync',methods=['GET','POST'])
     def mail_sync():
         from .mail_sync import presence,status
+        from .job_import import mailbox_configs
+        configured=bool(mailbox_configs())
         if request.method=='POST':presence(store,user()['id'],(request.get_json() or {}).get('check',False) is True)
         result=status(store)
         with store.connection() as c:pending=bool(c.execute("SELECT 1 FROM job_imports WHERE status IN ('queued','running') LIMIT 1").fetchone())
-        return jsonify(dict(result,serverless=store.is_cloud,pending_imports=pending))
+        return jsonify(dict(result,serverless=store.is_cloud,pending_imports=pending,mailbox_configured=configured))
 
     @app.post('/api/automation/tick')
     def browser_tick():
