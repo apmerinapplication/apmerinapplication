@@ -19,6 +19,21 @@ Deploy the contents of **AP_Merin_Web_Vercel.zip** as one Vercel Flask project. 
 5. From a trusted local terminal with the database environment configured, run `python -m procurement_automation.manage init-users`. Enter five unique passwords interactively. This seeds Administrator, Suga, Kirthana, Navin and Nurul (accounting). No default passwords ship. It does not reset existing accounts. Configure client email allowlists, contacts, signatures and default CCs through the authenticated workflow setup.
 6. Enable Supabase Cron, pg_net and Vault. Add `apmerin_worker_url` (the deployed `/workflow/api/internal/tick` URL) and `apmerin_worker_token` (matching `APMERIN_WORKER_SECRET`) through Vault. Apply `supabase/schedule.sql`. Confirm deployment protection permits this production scheduler request. Reapplying the SQL replaces the named schedule rather than creating duplicates.
 
+## Incomplete setup after GitHub import
+
+GitHub supplies source code only. It does not transfer local secrets into Vercel. All six variables below are required in the Production environment, followed by a redeployment:
+
+| Variable | Value source |
+| --- | --- |
+| `APMERIN_DATABASE_URL` | Supabase Connect → Transaction pooler URI, with the database password URL-encoded |
+| `APMERIN_SUPABASE_URL` | `https://pttjwzyhfnevwmdtzsjf.supabase.co` |
+| `APMERIN_SUPABASE_SERVICE_KEY` | Supabase project API keys → server secret/service-role key; never the browser publishable key |
+| `APMERIN_SESSION_SECRET` | A new cryptographically random secret of at least 32 characters |
+| `APMERIN_WORKER_SECRET` | A different cryptographically random secret of at least 32 characters |
+| `APMERIN_GEMINI_KEY` | Google AI Studio API key, entered directly into Vercel |
+
+Missing or malformed settings return a `503 Cloud setup required` page and block every dashboard/API route without constructing the application, connecting to local storage or starting workers. The health endpoint returns `cloud_configuration_required`. If older deployments show `500 FUNCTION_INVOCATION_FAILED`, runtime logs listing missing server environment variables indicate this setup issue. A setup page is not a working deployment: schema installation, user creation and the live acceptance checks still apply.
+
 ## Release checks and operational limits
 
 Run `python web_release.py` to rebuild and verify the explicit source allowlist and SHA-256 manifest. Run the workflow and cloud tests before deploying. `deployment/AP_Merin_Web_Vercel.zip` contains code/assets, schema and blank secret examples only; it contains no installed credentials or local jobs.
