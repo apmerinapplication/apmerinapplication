@@ -1,0 +1,10 @@
+'use strict';
+async function loadBiztoryMapping(){
+  const data=await api('/biztory-mapping');
+  let section=document.getElementById('biztorySetup');
+  if(!section){section=document.createElement('section');section.id='biztorySetup';$('settingsPanel').append(section);}
+  const fields=['job_reference','export_reference','customer','currency','item_code','description','quantity','unit_price','line_total'];
+  section.innerHTML='<h2>Biztory CSV transfer</h2><p>Upload the current sample CSV from your Biztory account. Map its headings to reviewed job data, or enter a constant for tax, terms and other fields.</p><input type="file" id="biztorySample" accept=".csv"><button id="importSample">Read sample headings</button><form id="mappingForm">'+data.columns.map((col,index)=>{const v=data.mapping[col]||{};return `<label>${esc(col)}<select data-column="${index}"><option value="constant">Use entered value</option>${fields.map(f=>`<option value="${f}" ${v.field===f?'selected':''}>${esc(pretty(f))}</option>`).join('')}</select><input data-constant="${index}" placeholder="Value, or leave blank if optional" value="${esc(v.constant||'')}"></label>`;}).join('')+(data.columns.length?'<button>Save accounting field mapping</button>':'')+'</form>';
+  $('importSample').onclick=run(async()=>{const file=$('biztorySample').files[0];if(!file)throw new Error('Select the Biztory sample CSV');const form=new FormData();form.append('file',file);const result=await fetch(prefix+'/api/biztory-template',{method:'POST',headers:{'X-CSRF-Token':csrf},body:form});const reply=await result.json();if(!result.ok)throw new Error(reply.error);await loadBiztoryMapping();});
+  $('mappingForm').onsubmit=run(async e=>{e.preventDefault();const mapping={};data.columns.forEach((col,index)=>{const field=section.querySelector(`[data-column="${index}"]`).value;mapping[col]=field==='constant'?{constant:section.querySelector(`[data-constant="${index}"]`).value}:{field};});await api('/biztory-mapping','PUT',mapping);notify('Biztory field mapping saved');});
+}

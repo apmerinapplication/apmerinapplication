@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "main.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{public/**,scratch/**,build/**,dist/**,dist_mac/**,_archive/**,tests/**,procurement_automation/tests/**,procurement_automation/shared_data/**,supabase/**,**/*.zip,**/*.sqlite,**/*.dpapi,**/*.exe,**/*.lnk,.env,ap_merin_user_profiles.json,ap_merin_contacts.json,auth_session.json,sync_config.json,email_automation/config.json,email_automation/uploads/**}"
+    }
+  },
+  "headers": [
+    {
+      "source": "/workflow/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

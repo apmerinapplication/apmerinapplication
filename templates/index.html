@@ -1,0 +1,2777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AP Merin Quotation & Purchase Order AI System</title>
+  
+  <!-- Local Offline Tailwind CSS & Lucide Icons -->
+  <script src="static/tailwind.min.js"></script>
+  <script src="static/lucide.min.js"></script>
+  
+  <!-- Font Awesome & Quill Editor for Email Automation Studio -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+  <link rel="stylesheet" href="static/email_studio.css">
+
+  <!-- In-Browser Document Parsers (Zero Server Backend Required) -->
+  <script src="static/xlsx.full.min.js"></script>
+  <script src="static/mammoth.browser.min.js"></script>
+  <script src="static/pdf.min.js"></script>
+
+  <style>
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .font-mono-num { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .dropzone-active { border-color: #3b82f6; background-color: #eff6ff; }
+    .mode-tab-active { background-color: #ffffff; color: #0f172a; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); }
+    .mode-tab-inactive { color: #94a3b8; }
+    /* Completely hide any Netlify injected drawer, badge, banner, or watermark */
+    [data-netlify-drawer], #netlify-drawer, .netlify-badge, .netlify-feedback, iframe[src*="netlify"], div[class*="netlify"], div[id*="netlify-drawer"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      height: 0 !important;
+      width: 0 !important;
+    }
+    /* Excel Table Scrollbar Styling */
+    #sourceExcelTableContainer::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    #sourceExcelTableContainer::-webkit-scrollbar-track {
+      background: #e2e8f0;
+      border-radius: 6px;
+    }
+    #sourceExcelTableContainer::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 6px;
+    }
+    #sourceExcelTableContainer::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+  </style>
+  <link rel="stylesheet" href="static/brand_theme.css">
+</head>
+<body class="bg-slate-900 text-slate-800 min-h-screen">
+
+  <!-- ========================================== -->
+  <!-- 1. SECURE LOGIN SCREEN                     -->
+  <!-- ========================================== -->
+  <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+    <div class="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 space-y-6 text-slate-800 animate-in fade-in zoom-in duration-300">
+      
+      <!-- Brand & Header -->
+      <div class="text-center space-y-2">
+        <div class="login-brand">
+          <img src="static/brand/ap-merin-logo.png" alt="AP Merin Services company logo">
+        </div>
+        <h2 class="text-2xl font-bold tracking-tight text-slate-900">AP Merin Services</h2>
+        <p class="text-xs text-slate-500 font-medium">Quotation &amp; Purchase Order Workspace</p><p class="brand-tagline">We serve the ocean</p>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[11px] font-semibold border border-blue-100 mt-1">
+          <i data-lucide="lock" class="w-3 h-3 text-blue-600"></i> Authorized Access Only
+        </div>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="space-y-4 pt-2">
+        <!-- Error Alert -->
+        <div id="loginErrorAlert" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 text-rose-600"></i>
+          <span id="loginErrorMsg">Invalid username or password.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Email Address or Username</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+            <input type="text" id="loginUsername" placeholder="e.g. yourname@apmerinservices.com.my" required autocomplete="username"
+              class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
+          <div class="relative">
+            <i data-lucide="key-round" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+            <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password"
+              class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
+            <button type="button" id="btnToggleLoginPassword" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+              <i id="iconToggleLoginPassword" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" id="rememberMeCheckbox" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+            <span>Keep me signed in</span>
+          </label>
+          <span class="text-[11px] text-slate-400">Secure Session</span>
+        </div>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-xl transition transform active:scale-[0.98] flex items-center justify-center gap-2">
+          <span>Sign In to System</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="text-center pt-2 border-t border-slate-100">
+        
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. MAIN APPLICATION (AUTHENTICATED)        -->
+  <!-- ========================================== -->
+  <div id="appWrapper" class="hidden min-h-screen bg-slate-50 text-slate-800">
+
+    <!-- TOP HEADER BAR -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+          <div id="appLogoIcon" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-md transition-colors">
+            <img class="company-brand-logo" src="static/brand/ap-merin-logo.png" alt="AP Merin Services"><i id="headerIcon" data-lucide="calculator" class="w-5 h-5" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              AP Merin Services
+              <span id="appModeBadge" class="text-xs bg-blue-500/20 text-blue-300 font-medium px-2 py-0.5 rounded-full border border-blue-500/30">Quotation AI Pro</span>
+            </h1>
+            <p id="appSubtitle" class="text-xs text-slate-400">Marine procurement · Quotations · Purchase orders</p>
+          </div>
+        </div>
+
+        <!-- Mode Switcher Tabs -->
+        <div class="bg-slate-800 p-1 rounded-xl border border-slate-700 flex items-center text-xs font-semibold">
+          <button id="tabModeQuote" class="px-3.5 py-1.5 rounded-lg mode-tab-active flex items-center gap-1.5 transition">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span>1. Quotation Mode</span>
+          </button>
+          <button id="tabModePO" class="px-3.5 py-1.5 rounded-lg mode-tab-inactive hover:text-slate-200 flex items-center gap-1.5 transition">
+            <i data-lucide="shopping-bag" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>2. Purchase Order Mode</span>
+          </button>
+          <button id="tabModeEmail" class="px-3.5 py-1.5 rounded-lg mode-tab-inactive hover:text-slate-200 flex items-center gap-1.5 transition">
+            <i data-lucide="mail" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>3. Email Automation</span>
+          </button>
+          <button id="tabModeCompare" class="px-3.5 py-1.5 rounded-lg mode-tab-inactive hover:text-slate-200 flex items-center gap-1.5 transition">
+            <i data-lucide="scale" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>4. Quotation Comparison</span>
+          </button>
+        </div>
+
+        <!-- Actions & Utilities -->
+        <div class="flex items-center gap-2.5">
+          <!-- AI Vision Badge -->
+          <div id="aiStatusPill" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-semibold">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Gemini Vision</span>
+          </div>
+
+          <!-- Cross-Device Sync Badge -->
+          <button id="btnOpenSyncModal" class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold transition cursor-pointer" title="Cross-Device Cloud Sync Center">
+            <span class="relative flex h-2 w-2">
+              <span id="syncPulseRing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span id="syncStatusDot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span id="syncBadgeText">Synced</span>
+          </button>
+
+          <button id="btnPasteGlobal" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2 rounded-lg transition" title="Paste Screenshot (Ctrl+V)">
+            <i data-lucide="clipboard-paste" class="w-4 h-4 text-blue-400"></i>
+          </button>
+          <button id="btnOpenSettings" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 p-2 rounded-lg transition" title="API Key & Security Settings">
+            <i data-lucide="settings" class="w-4 h-4 text-slate-300"></i>
+          </button>
+          <!-- ACTIVE USER BADGE -->
+          <div id="activeUserBadge" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-xs">
+            <div id="activeUserAvatar" class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold">D</div>
+            <div class="text-left">
+              <span id="activeUserName" class="block font-bold text-slate-200 text-xs">Darvwesvaar</span>
+              <span id="activeUserEmail" class="block text-[10px] text-slate-400 leading-none">project@apmerinservices.com.my</span>
+            </div>
+          </div>
+
+          <!-- SECURE LOGOUT BUTTON -->
+          <button id="btnLogout" class="text-xs bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-300 border border-slate-700 px-3 py-2 rounded-lg transition flex items-center gap-1.5 font-semibold" title="Sign Out">
+            <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-400"></i>
+            <span class="hidden sm:inline">Log Out</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      <!-- VIEW 1 & 2: QUOTATION & PURCHASE ORDER AI WORKSPACE -->
+      <div id="quotePoMainView" class="space-y-6">
+
+      <!-- MODE ANNOUNCEMENT BANNER -->
+      <div id="modeBanner" class="p-3.5 rounded-xl border bg-blue-50/70 border-blue-200 flex flex-wrap items-center justify-between text-xs transition-colors">
+        <div class="flex items-center gap-2 text-blue-900 font-medium">
+          <i id="modeBannerIcon" data-lucide="info" class="w-4 h-4 text-blue-600"></i>
+          <span id="modeBannerText"><strong>Quotation Mode Active:</strong> Client RFQ + Supplier Quote &rarr; Generates Sales Quotation for Client with custom markups and currency conversion.</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="modeFilterBadge" class="text-[11px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md">Sales Quotation Workflow</span>
+          <button id="btnClearModeData" type="button" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white/90 hover:bg-rose-50 text-rose-700 hover:text-rose-800 border border-rose-200 shadow-2xs flex items-center gap-1 transition cursor-pointer" title="Reset all inputs, documents and matched items for this mode">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-500"></i>
+            <span id="btnClearModeText">Clear Quotation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- COLLAPSIBLE DOCUMENT PREVIEW PANE -->
+      <div id="documentPreviewPane" class="bg-white rounded-2xl p-5 shadow-md border-2 border-indigo-100 space-y-4 hidden transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="p-1 bg-indigo-50 text-indigo-600 rounded-md"><i data-lucide="eye" class="w-4 h-4"></i></span>
+            <h3 class="font-bold text-slate-800 text-sm">Visual Document Inspector</h3>
+            <span class="text-xs text-slate-500">| Inspect any uploaded PDF, Excel, Word document, Screenshot or Text side-by-side</span>
+          </div>
+          <button id="btnClosePreviewPane" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium transition">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i> Close Preview
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[550px] overflow-y-auto pr-1">
+          <!-- Client Document Preview Card -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-700 border-b border-slate-200/60 pb-2">
+              <span id="previewClientDocTitle" class="flex items-center gap-1.5"><i data-lucide="file-spreadsheet" class="w-4 h-4 text-blue-600"></i> 1. Client Document</span>
+              <span id="previewClientPageCount" class="text-slate-500 font-medium bg-white px-2 py-0.5 rounded border border-slate-200">No file</span>
+            </div>
+            <div id="previewClientContainer" class="flex-1 flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-slate-200 min-h-[260px] overflow-y-auto max-h-[460px]">
+              <p class="text-xs text-slate-400 text-center">No client document uploaded yet.<br>Upload PDF, Excel, Word, or paste a Screenshot above to inspect here.</p>
+            </div>
+          </div>
+
+          <!-- Supplier Document Preview Card -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 flex flex-col space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-700 border-b border-slate-200/60 pb-2">
+              <span class="flex items-center gap-1.5"><i data-lucide="file-check" class="w-4 h-4 text-emerald-600"></i> 2. Supplier Quotation</span>
+              <span id="previewQuotePageCount" class="text-slate-500 font-medium bg-white px-2 py-0.5 rounded border border-slate-200">No file</span>
+            </div>
+            <div id="previewQuoteContainer" class="flex-1 flex flex-col items-center justify-center p-4 bg-white rounded-lg border border-slate-200 min-h-[260px] overflow-y-auto max-h-[460px]">
+              <p class="text-xs text-slate-400 text-center">No supplier quotation uploaded yet.<br>Upload PDF, Excel, Word, or paste a Screenshot above to inspect here.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- UPLOAD CONTAINERS (CLIENT RFQ/PO & SUPPLIER QUOTATION) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- CLIENT DOCUMENT CARD (RFQ / PO) -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div class="flex items-center space-x-2">
+              <span id="clientCardIconBox" class="p-1.5 bg-blue-50 text-blue-600 rounded-lg transition-colors"><i id="clientCardIcon" data-lucide="file-spreadsheet" class="w-5 h-5"></i></span>
+              <div>
+                <h2 id="clientCardTitle" class="font-semibold text-slate-800 text-sm">1. Client RFQ</h2>
+                <p id="clientCardSubtitle" class="text-xs text-slate-500">PDF, Excel (.xlsx, .xls), Word (.docx), Image or Screenshot</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <!-- PREVIEW BUTTON ON CARD -->
+              <button id="btnCardPreviewClient" class="text-xs bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-medium px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition">
+                <i data-lucide="eye" class="w-3.5 h-3.5 text-blue-600"></i> <span>Preview</span>
+              </button>
+              <button id="btnClearCardClient" class="text-xs bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 font-medium px-2 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 transition" title="Clear Client Document">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-500"></i>
+              </button>
+              <span id="rfqStatusBadge" class="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-600">No file</span>
+            </div>
+          </div>
+
+          <div id="rfqDropzone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-blue-50/30 flex flex-col items-center justify-center min-h-[140px]">
+            <input type="file" id="rfqFileInput" class="hidden" accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg,.webp,.csv,.txt">
+            <i id="clientDropzoneIcon" data-lucide="upload-cloud" class="w-8 h-8 text-blue-500 mb-2"></i>
+            <p id="clientDropzoneText" class="text-sm font-medium text-slate-700">Drag & Drop file here, or <span class="text-blue-600 hover:underline">browse</span></p>
+            <p class="text-xs text-slate-400 mt-1">Supports PDF, Excel (.xlsx), Word (.docx), Screenshots & CSV</p>
+          </div>
+
+          <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+            <button id="btnPasteRfqText" class="hover:text-blue-600 flex items-center gap-1 font-medium">
+              <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Paste Text
+            </button>
+            <div id="rfqCountDisplay" class="font-medium text-slate-700">0 items loaded</div>
+          </div>
+        </div>
+
+        <!-- SUPPLIER QUOTATION CARD -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between relative overflow-hidden">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div class="flex items-center space-x-2">
+              <span class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="file-check" class="w-5 h-5"></i></span>
+              <div>
+                <h2 class="font-semibold text-slate-800 text-sm">2. Supplier Quotation</h2>
+                <p class="text-xs text-slate-500">PDF, Excel (.xlsx, .xls), Word (.docx), Image or Screenshot</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <!-- PREVIEW BUTTON ON CARD -->
+              <button id="btnCardPreviewQuote" class="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-medium px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5 transition">
+                <i data-lucide="eye" class="w-3.5 h-3.5 text-emerald-600"></i> <span>Preview</span>
+              </button>
+              <button id="btnClearCardQuote" class="text-xs bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 font-medium px-2 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 transition" title="Clear Supplier Quotation">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-500"></i>
+              </button>
+              <span id="detectedCurrBadge" class="text-xs px-2 py-0.5 rounded font-mono font-medium bg-emerald-100 text-emerald-800 hidden">MYR</span>
+              <span id="supplierDiscountBadge" class="text-xs px-2.5 py-1 rounded-full font-bold bg-amber-100 text-amber-900 border border-amber-300 hidden flex items-center gap-1">
+                <i data-lucide="tag" class="w-3 h-3 text-amber-700"></i> <span id="supplierDiscountText">5.0% Disc</span>
+              </span>
+              <span id="quoteStatusBadge" class="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-100 text-slate-600">No file</span>
+            </div>
+          </div>
+
+          <div id="quoteDropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center min-h-[140px]">
+            <input type="file" id="quoteFileInput" class="hidden" accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg,.webp,.csv,.txt">
+            <i data-lucide="upload-cloud" class="w-8 h-8 text-emerald-500 mb-2"></i>
+            <p class="text-sm font-medium text-slate-700">Drag & Drop Quotation file here, or <span class="text-emerald-600 hover:underline">browse</span></p>
+            <p class="text-xs text-slate-400 mt-1">Preserves Item Remarks & extracts accurate Supplier Unit Costs</p>
+          </div>
+
+          <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+            <button id="btnPasteQuoteText" class="hover:text-emerald-600 flex items-center gap-1 font-medium">
+              <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Paste Text / Email
+            </button>
+            <div id="quoteCountDisplay" class="font-medium text-slate-700">0 items loaded</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CONTROLS BAR: DYNAMIC MULTI-CURRENCY, MANUAL FX RATE & PRICING -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
+          <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="coins" class="w-4 h-4 text-blue-600"></i>
+            <span id="pricingConfigHeader">Currency & Pricing Configuration</span>
+          </h3>
+          <div id="fxFormulaTag" class="text-xs font-mono font-semibold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg border border-slate-200">
+            1 USD = 4.4500 MYR
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-end">
+          
+          <!-- 1. Supplier Currency -->
+          <div class="lg:col-span-3">
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5 flex items-center justify-between">
+              <span>Supplier Quoted Currency</span>
+              <span class="text-[10px] text-slate-400 font-normal">Auto-detected</span>
+            </label>
+            <select id="supplierCurrencySelect" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="USD" selected>USD - US Dollar ($)</option>
+              <option value="EUR">EUR - Euro (€)</option>
+              <option value="MYR">MYR - Ringgit (RM)</option>
+              <option value="SGD">SGD - Singapore Dollar (S$)</option>
+              <option value="GBP">GBP - British Pound (£)</option>
+              <option value="AUD">AUD - Australian Dollar (A$)</option>
+              <option value="JPY">JPY - Japanese Yen (¥)</option>
+              <option value="CNY">CNY - Chinese Yuan (¥)</option>
+              <option value="AED">AED - UAE Dirham</option>
+            </select>
+          </div>
+
+          <!-- Currency Swap Button -->
+          <div class="lg:col-span-1 flex justify-center items-center pb-1">
+            <button id="btnSwapCurrencies" class="p-2.5 rounded-xl bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition" title="Swap Currencies">
+              <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- 2. Target Output Currency -->
+          <div class="lg:col-span-3">
+            <label id="targetCurrencyLabel" class="block text-xs font-semibold text-slate-600 mb-1.5">
+              Output Currency (Target)
+            </label>
+            <select id="targetCurrencySelect" class="w-full bg-blue-50/50 border border-blue-200 text-blue-900 text-sm font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="MYR" selected>MYR - Ringgit (RM)</option>
+              <option value="USD">USD - US Dollar ($)</option>
+              <option value="EUR">EUR - Euro (€)</option>
+              <option value="SGD">SGD - Singapore Dollar (S$)</option>
+              <option value="GBP">GBP - British Pound (£)</option>
+              <option value="AUD">AUD - Australian Dollar (A$)</option>
+              <option value="JPY">JPY - Japanese Yen (¥)</option>
+              <option value="CNY">CNY - Chinese Yuan (¥)</option>
+              <option value="AED">AED - UAE Dirham</option>
+            </select>
+          </div>
+
+          <!-- 3. Manual Exchange Rate Input -->
+          <div class="lg:col-span-5">
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-semibold text-slate-600">Manual Exchange Rate</label>
+              <button id="btnResetMarketFx" class="text-[10px] text-blue-600 hover:underline font-medium">Reset to standard rate</button>
+            </div>
+            <div class="flex items-center">
+              <span id="fxInputPrefix" class="text-xs font-mono bg-slate-100 border border-r-0 border-slate-300 px-3 py-2 rounded-l-xl text-slate-600 font-bold whitespace-nowrap">
+                1 USD =
+              </span>
+              <input type="number" step="0.0001" min="0.0001" id="fxRateInput" value="4.4500" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm font-mono-num font-bold px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+              <span id="fxInputSuffix" class="text-xs font-mono bg-slate-100 border border-l-0 border-slate-300 px-3 py-2 rounded-r-xl text-slate-600 font-bold">
+                MYR
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ROW 2: MARKUP SLIDER, AMOUNT ROUND OFF & PROCESS BUTTON -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center pt-2 border-t border-slate-100">
+          
+          <!-- Markup / Discount Controls (Dual-Mode: Percentage % OR Price Amount) -->
+          <div class="lg:col-span-5 space-y-2" id="markupSectionContainer">
+            <!-- Header with Title, Mode Switcher Pill & Value Badge -->
+            <div class="flex items-center justify-between flex-wrap gap-1">
+              <div class="flex items-center gap-1.5">
+                <label id="markupSliderLabel" class="text-xs font-semibold text-slate-700">Default Global Markup / Discount</label>
+                <!-- Mode Switcher: % vs Price -->
+                <div class="inline-flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-300/80 text-[10px]">
+                  <button type="button" id="btnBulkModePercent" class="px-2 py-0.5 font-bold rounded-md bg-white text-blue-700 shadow-2xs transition">
+                    % Pct
+                  </button>
+                  <button type="button" id="btnBulkModePrice" class="px-2 py-0.5 font-semibold text-slate-600 hover:text-slate-900 rounded-md transition">
+                    <span id="bulkModePriceCurrLabel">Price (MYR)</span>
+                  </button>
+                </div>
+              </div>
+              <span id="markupDisplayValue" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-mono">+25.0%</span>
+            </div>
+
+            <!-- View 1: Percentage Controls (Range Slider + Step Input) -->
+            <div id="bulkPercentControlsContainer" class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <input type="range" id="markupSlider" min="-50" max="100" step="1" value="25" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <div class="flex items-center">
+                  <input type="number" id="markupInput" value="25" min="-50" max="500" step="1" class="w-14 bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-l-lg px-1.5 py-1.5 text-center focus:ring-2 focus:ring-blue-500 outline-none">
+                  <span class="bg-slate-100 border border-l-0 border-slate-300 px-1.5 py-1.5 rounded-r-lg text-xs font-bold text-slate-500">%</span>
+                </div>
+                <button id="btnApplyMarkupToAll" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 border border-slate-300 rounded-lg font-semibold whitespace-nowrap transition">
+                  Apply All
+                </button>
+                <button id="btnApplyMarkupToSelected" class="hidden text-xs px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 rounded-lg font-bold whitespace-nowrap transition shadow-2xs">
+                  Apply Sel (<span class="sel-count-badge">0</span>)
+                </button>
+              </div>
+              <!-- Presets for Percentage -->
+              <div class="flex items-center gap-1">
+                <span class="text-[10px] text-slate-400 font-medium">Presets:</span>
+                <button class="markup-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded font-medium text-slate-700 transition" data-val="0">0%</button>
+                <button class="markup-preset text-[10px] px-1.5 py-0.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded font-medium transition" data-val="-10">-10%</button>
+                <button class="markup-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 rounded font-medium text-slate-600 transition" data-val="15">+15%</button>
+                <button class="markup-preset text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-medium transition" data-val="25">+25%</button>
+                <button class="markup-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 rounded font-medium text-slate-600 transition" data-val="35">+35%</button>
+              </div>
+            </div>
+
+            <!-- View 2: Price Amount Controls (Fixed Unit Amount / Fixed Price) -->
+            <div id="bulkPriceControlsContainer" class="hidden space-y-1.5">
+              <div class="flex items-center gap-2">
+                <div class="relative flex-1 flex items-center">
+                  <span id="bulkPriceCurrPrefix" class="bg-slate-100 border border-r-0 border-slate-300 px-2 py-1.5 rounded-l-lg text-xs font-bold text-slate-600">MYR</span>
+                  <input type="number" id="bulkPriceInput" value="0.00" step="1" placeholder="e.g. 20.00 or -10.00" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold px-2 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                  <select id="bulkPriceSubModeSelect" class="bg-slate-100 border border-l-0 border-slate-300 rounded-r-lg px-1.5 py-1.5 text-[11px] font-semibold text-slate-700 outline-none">
+                    <option value="delta">+/- Per Unit</option>
+                    <option value="fixed">Set Exact Price</option>
+                  </select>
+                </div>
+                <button id="btnApplyPriceToAll" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-700 border border-slate-300 rounded-lg font-semibold whitespace-nowrap transition">
+                  Apply All
+                </button>
+                <button id="btnApplyPriceToSelected" class="hidden text-xs px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 rounded-lg font-bold whitespace-nowrap transition shadow-2xs">
+                  Apply Sel (<span class="sel-count-badge">0</span>)
+                </button>
+              </div>
+              <!-- Presets for Price -->
+              <div class="flex items-center gap-1 flex-wrap">
+                <span class="text-[10px] text-slate-400 font-medium">Quick Price:</span>
+                <button class="price-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded font-medium text-slate-700 transition" data-price="0">0.00</button>
+                <button class="price-preset text-[10px] px-1.5 py-0.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded font-medium transition" data-price="-5">-5.00</button>
+                <button class="price-preset text-[10px] px-1.5 py-0.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded font-medium transition" data-price="-10">-10.00</button>
+                <button class="price-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 rounded font-medium text-slate-600 transition" data-price="10">+10.00</button>
+                <button class="price-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 rounded font-medium text-slate-600 transition" data-price="25">+25.00</button>
+                <button class="price-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 hover:text-blue-700 rounded font-medium text-slate-600 transition" data-price="50">+50.00</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Price Amount Round-Off Controls -->
+          <div class="lg:col-span-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-500"></i> Amount Round-Off
+              </label>
+              <span id="roundOffBadge" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded font-mono">Exact (2 Decimals)</span>
+            </div>
+            <select id="roundOffSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition">
+              <option value="none" selected>No Rounding (Exact: .45 / .67)</option>
+              <option value="ceil_1">Round UP to Next 1.00 (Ceiling: e.g. 133.00)</option>
+              <option value="round_1">Round to Nearest Whole 1.00 (e.g. 133.00)</option>
+              <option value="ceil_5">Round UP to Next 5.00 (e.g. 135.00)</option>
+              <option value="round_5">Round to Nearest 5.00 (e.g. 135.00)</option>
+              <option value="ceil_10">Round UP to Next 10.00 (e.g. 140.00)</option>
+              <option value="round_10">Round to Nearest 10.00 (e.g. 130.00)</option>
+              <option value="round_50c">Round to Nearest 0.50 (e.g. 132.50)</option>
+            </select>
+            <!-- Rounding Quick Buttons -->
+            <div class="flex items-center gap-1">
+              <span class="text-[10px] text-slate-400 font-medium">Quick:</span>
+              <button class="round-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-slate-200 rounded font-medium text-slate-700 transition" data-round="none">Exact</button>
+              <button class="round-preset text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded font-medium transition" data-round="ceil_1">UP 1.00</button>
+              <button class="round-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 rounded font-medium text-slate-600 transition" data-round="round_1">Nearest 1</button>
+              <button class="round-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 rounded font-medium text-slate-600 transition" data-round="ceil_5">UP 5.00</button>
+              <button class="round-preset text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 rounded font-medium text-slate-600 transition" data-round="ceil_10">UP 10.00</button>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="lg:col-span-3 flex justify-end">
+            <button id="btnProcessMatch" class="w-full px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              <span id="btnProcessMatchText">Generate & Match</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TARGET OUTPUT TABLE FOR CLOUD ACCOUNTING SOFTWARE -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        
+        <!-- Table Header & Action Toolbar -->
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <span id="outputGridTitle">Accounting Output Grid (Quotation Mode)</span>
+                <span id="tableRowsCount" class="text-xs bg-slate-200 text-slate-700 font-semibold px-2 py-0.5 rounded-full">0 rows</span>
+              </h2>
+              <span id="tableSelectedRowsCount" class="hidden text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0 selected</span>
+              <button id="btnDeselectAllAccountingRows" type="button" class="hidden text-[11px] text-slate-500 hover:text-slate-800 underline cursor-pointer">Clear selection</button>
+            </div>
+            <p class="text-xs text-slate-500">Columns formatted strictly for direct copy & paste: <span class="font-mono text-slate-700">Item Code • Description • Quantity • Unit • <span id="accountingGridPriceColNote">Price (MYR)</span></span></p>
+          </div>
+
+          <!-- Export & Copy Actions -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button id="btnClearTableData" class="text-xs bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-300 hover:border-rose-300 font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer" title="Clear all matched items in table">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-500"></i> Clear Grid
+            </button>
+            <button id="btnAddRow" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+              <i data-lucide="plus" class="w-3.5 h-3.5 text-blue-600"></i> Add Row
+            </button>
+            <button id="btnAddRemarksRow" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition" title="Add a multi-line formatted remarks row to the table">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-600"></i> Add Remarks Row
+            </button>
+            <button id="btnExportExcel" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i> Export Excel
+            </button>
+            <button id="btnExportCsv" class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-medium px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+              <i data-lucide="file-code" class="w-3.5 h-3.5 text-indigo-600"></i> CSV
+            </button>
+            
+            <!-- COPY FORMAT SELECTOR FOR BIZTORY & ACCOUNTING SOFTWARE -->
+            <div class="flex items-center gap-1 bg-white border border-slate-300 rounded-lg px-2 py-1 shadow-2xs">
+              <label for="selAccountingCopyFormat" class="text-[11px] font-bold text-slate-500 flex items-center gap-1 cursor-pointer" title="Format to use when copying table rows to clipboard for accounting software">
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-500"></i> Format:
+              </label>
+              <select id="selAccountingCopyFormat" class="text-xs font-semibold bg-transparent text-slate-800 focus:outline-none cursor-pointer pr-1 py-0.5" title="Select clipboard copy format for accounting software">
+                <option value="biztory_single" selected>Biztory (Single-Line //)</option>
+                <option value="biztory_soft">Biztory (Soft Line Break)</option>
+                <option value="tsv_multiline">Standard TSV (Excel / Xero)</option>
+                <option value="clean_only">Clean Titles Only (No Remarks)</option>
+              </select>
+              <button id="btnBiztoryHelp" type="button" class="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition cursor-pointer" title="Biztory Copy & Paste Guide & Workaround Tips">
+                <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- PRIMARY ACTION: 1-CLICK COPY FOR CLOUD ACCOUNTING -->
+            <button id="btnCopyAccounting" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 transition transform active:scale-95 cursor-pointer">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+              <span id="btnCopyAccountingText">📋 Copy for Cloud Accounting</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="overflow-x-auto min-h-[300px]">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100/80 text-slate-700 font-semibold border-b border-slate-200 select-none">
+                <th class="py-3 px-2 w-14 text-center">
+                  <div class="flex items-center justify-center gap-1">
+                    <input type="checkbox" id="chkSelectAllRows" class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" title="Select / Deselect All Rows">
+                    <span class="text-[10px] text-slate-400">#</span>
+                  </div>
+                </th>
+                <th class="py-2.5 px-3 w-56" id="colHeaderItemCode">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <span class="font-semibold text-slate-700">Code / Part No</span>
+                    <select id="selCodeCategoryToggle" class="text-[10px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 hover:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer transition shadow-2xs" title="Switch which code is displayed across all rows">
+                      <option value="auto">Auto / Primary</option>
+                      <option value="part_no">Part Number</option>
+                      <option value="item_code">Item Code</option>
+                      <option value="impa_code">IMPA Code</option>
+                      <option value="maker_no">Maker's No / Model</option>
+                      <option value="ref_no">Ref / Pos No</option>
+                    </select>
+                  </div>
+                </th>
+                <th class="py-2.5 px-4 min-w-[340px]" id="colHeaderDescription">
+                  <div class="flex items-center justify-between gap-1.5">
+                    <span class="font-semibold text-slate-700">Description & Remarks</span>
+                    <select id="selRemarksDisplayToggle" class="text-[10px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 hover:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer transition shadow-2xs" title="Toggle extra remarks across all rows">
+                      <option value="all">Remarks: Show All</option>
+                      <option value="none">Remarks: Hide All (Clean Titles)</option>
+                      <option value="maker_only">Remarks: Maker Only</option>
+                      <option value="offer_only">Remarks: #OFFER Only</option>
+                    </select>
+                  </div>
+                </th>
+                <th class="py-3 px-2 w-20 text-center">Qty</th>
+                <th class="py-3 px-2 w-16 text-center">Unit</th>
+                <th class="py-3 px-3 w-40 text-center" id="colHeaderMarkup">
+                  <div class="flex items-center justify-center gap-1">
+                    <span id="colHeaderMarkupTitle">Markup / Discount</span>
+                    <span class="text-[9px] bg-slate-200 text-slate-600 px-1 rounded font-mono">% / Price</span>
+                  </div>
+                </th>
+                <th class="py-3 px-4 w-36 text-right" id="tableHeaderPriceCol">Price (<span id="tableHeaderTargetCurr">MYR</span>)</th>
+                <th class="py-3 px-2 w-20 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="accountingTableBody" class="divide-y divide-slate-100 text-slate-700">
+              <!-- Empty state placeholder -->
+              <tr id="emptyTableState">
+                <td colspan="8" class="py-16 text-center text-slate-400">
+                  <div class="flex flex-col items-center justify-center">
+                    <i data-lucide="table" class="w-10 h-10 text-slate-300 mb-2"></i>
+                    <p id="emptyStateTitle" class="font-medium text-slate-500">No items matched yet</p>
+                    <p id="emptyStateSubtitle" class="text-xs text-slate-400 mt-1">Upload Client document and Supplier Quotation above, then click Generate</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- QUOTATION & PURCHASE ORDER REMARKS / TERMS CARD -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="message-square-text" class="w-4 h-4"></i></span>
+            <div>
+              <h3 id="remarksCardTitle" class="text-xs font-bold text-slate-800 uppercase tracking-wider">Quotation Remarks & Terms</h3>
+              <p class="text-[11px] text-slate-500">Copy & paste multi-line quotation terms, delivery notes, and warranty conditions with exact formatting preserved</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnInsertRemarksToGrid" type="button" class="text-xs bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-300 font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer" title="Append these remarks as a formatted row in the table above">
+              <i data-lucide="corner-down-left" class="w-3.5 h-3.5 text-indigo-600"></i> Insert as Table Row
+            </button>
+            <button id="btnCopyRemarksFormatted" type="button" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-1.5 rounded-lg shadow-2xs flex items-center gap-1.5 transition cursor-pointer" title="Copy remarks to clipboard with exact spacing and newlines preserved">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span id="btnCopyRemarksText">Copy Remarks</span>
+            </button>
+            <button id="btnClearRemarksBox" type="button" class="text-xs bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 transition cursor-pointer" title="Clear remarks">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-500"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <textarea id="quotationPoRemarksInput" class="w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white focus:border-indigo-500 p-3.5 text-xs text-slate-800 outline-none transition font-sans leading-relaxed resize-y" rows="5" style="white-space: pre-wrap; min-height: 110px;" placeholder="Paste multi-line remarks here (e.g. Remarks on Spare Parts Offer, payment terms, delivery validity, freight estimations)..."></textarea>
+        </div>
+      </div>
+      </div> <!-- End #quotePoMainView -->
+
+      <!-- ========================================== -->
+      <!-- VIEW 3: EMAIL AUTOMATION STUDIO            -->
+      <!-- ========================================== -->
+      <div id="emailStudioView" class="hidden space-y-4">
+        
+        <!-- Studio Header Action Bar -->
+        <div class="p-4 rounded-2xl border bg-white shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md">
+              <i class="fa-solid fa-paper-plane text-base"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                Email Automation Studio
+                <span class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-0.5 rounded-full border border-indigo-200">Mode 3</span>
+              </h2>
+              <p class="text-xs text-slate-500">Company-grouped recipients • Pinned formatting toolbar • Clean Outlook signature • Serverless SSL dispatch</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnClearEmailStudio" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center gap-2 border border-rose-200 transition cursor-pointer" title="Reset recipients, subject, message body, and attachments">
+              <i class="fa-solid fa-trash-can text-rose-600"></i>
+              <span>Clear Studio</span>
+            </button>
+            <button id="btnOpenSignature" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 transition">
+              <i class="fa-solid fa-signature text-indigo-600"></i>
+              <span>My Signature</span>
+            </button>
+            <button id="btnOpenEmailSettings" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-2 transition">
+              <i class="fa-solid fa-gear text-slate-600"></i>
+              <span>Email Settings</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Studio Two-Column Layout -->
+        <div class="email-studio-layout">
+
+          <!-- Left Column: Recipients & Attachments -->
+          <aside class="sidebar-panel">
+            
+            <!-- Recipient Management Box -->
+            <div class="card">
+              <div class="card-header">
+                <div class="header-title">
+                  <i class="fa-solid fa-users text-primary"></i>
+                  <h3>Recipients (<span id="recipientCount">0</span>)</h3>
+                </div>
+                <div class="header-actions" style="display: flex; gap: 8px; align-items: center;">
+                  <button id="btnOpenAddressBook" type="button" class="btn-text" style="color: var(--primary); font-weight: 600;" title="Open Address Book & Contact Management">
+                    <i class="fa-solid fa-address-book"></i> Address Book
+                  </button>
+                  <button id="btnClearRecipients" type="button" class="btn-text" title="Clear all recipients">Clear All</button>
+                </div>
+              </div>
+
+              <div class="card-body">
+                <!-- Add Recipients Section -->
+                <div class="company-input-section" style="position: relative;">
+                  <label class="field-label">Recipient Email Addresses:</label>
+                  <textarea id="inputCompanyEmails" class="form-control" rows="3" 
+                    placeholder="Paste email address(es) (e.g. buyer1@abc.com, buyer2@xyz.com)..."></textarea>
+
+                  <div class="input-actions-row">
+                    <button type="button" id="btnAddCompanyGroup" class="btn btn-sm btn-primary">
+                      <i class="fa-solid fa-plus"></i> Add Recipients
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Recipient List Container -->
+                <div class="company-groups-container" id="companyGroupsList">
+                  <div class="empty-state-text" id="emptyRecipientsText">
+                    <i class="fa-regular fa-envelope-open"></i> No recipients added yet
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Optional File Attachments Box -->
+            <div class="card mt-3">
+              <div class="card-header">
+                <div class="header-title">
+                  <i class="fa-solid fa-paperclip text-primary"></i>
+                  <h3>Attachments (<span id="attachmentCount">0</span>)</h3>
+                </div>
+              </div>
+
+              <div class="card-body">
+                <div class="drop-zone" id="dropZone">
+                  <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+                  <p>Drag files here or <span class="browse-link">browse</span></p>
+                  <input type="file" id="fileAttachmentInput" multiple hidden>
+                </div>
+
+                <ul class="attachment-list" id="attachmentList"></ul>
+              </div>
+            </div>
+
+          </aside>
+
+          <!-- Right Column: Email Composer -->
+          <section class="composer-panel">
+            <div class="card composer-card">
+              
+              <!-- Subject Input -->
+              <div class="subject-bar">
+                <label for="emailSubject" class="subject-label">Subject:</label>
+                <input type="text" id="emailSubject" class="subject-input" placeholder="Enter your email subject here...">
+              </div>
+
+              <!-- CC Bar for Internal Colleagues -->
+              <div class="cc-bar">
+                <label for="emailCc" class="cc-label">CC:</label>
+                <div class="cc-input-group">
+                  <input type="text" id="emailCc" class="cc-input" placeholder="colleague1@company.com, colleague2@company.com (comma or semicolon separated)">
+                  <div class="cc-controls-right">
+                    <span class="cc-badge-hint" id="ccCountBadge" title="All colleagues listed here will be CC'd on every outgoing email">
+                      <i class="fa-solid fa-user-group"></i> <span id="ccCountLabel">0 Colleagues</span>
+                    </span>
+                    <button type="button" id="btnSaveDefaultCc" class="btn-text btn-save-cc" title="Save current CC emails as your default for next time">
+                      <i class="fa-solid fa-bookmark"></i> Save as Default
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Email Canvas (Message Editor + Official Outlook Signature Table) -->
+              <div class="editor-wrapper">
+                <div class="email-canvas-wrapper" id="emailCanvasWrapper">
+                  <!-- Message Body Editor (Quill) -->
+                  <div id="editor"></div>
+
+                  <!-- Outlook Signature Section (Directly below message, 100% table layout fidelity) -->
+                  <div id="outlookSignatureWrapper" class="outlook-signature-section">
+                    <div id="outlookSignatureDisplay" class="outlook-signature-content"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer Action Bar -->
+              <div class="composer-footer">
+                <div class="footer-left">
+                  <label class="checkbox-container" title="Include signature at the bottom of the email">
+                    <input type="checkbox" id="chkIncludeSignature" checked>
+                    <span class="checkmark"></span>
+                    <span class="checkbox-label">Include Signature</span>
+                  </label>
+
+                  <button type="button" id="btnEditSignature" class="btn-text btn-sig-link" title="Paste signature from Outlook">
+                    <i class="fa-solid fa-signature"></i> Edit Signature
+                  </button>
+                </div>
+
+                <div class="footer-right">
+                  <button type="button" id="btnExportEml" class="btn btn-outline" title="Export current email as an .EML file to open directly in Outlook">
+                    <i class="fa-solid fa-envelope-open-text"></i> Download .EML
+                  </button>
+
+                  <button type="button" id="btnTestEmail" class="btn btn-outline" title="Send a single test email to your inbox">
+                    <i class="fa-solid fa-vial"></i> Send Test
+                  </button>
+
+                  <button type="button" id="btnSendBatch" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-paper-plane"></i> <span id="btnSendBatchText">Send to All (0)</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+        </div>
+
+      </div> <!-- End #emailStudioView -->
+
+      <!-- ========================================================= -->
+      <!-- VIEW 4: QUOTATION COMPARISON MAKER WORKSPACE              -->
+      <!-- ========================================================= -->
+      <div id="quotationCompareView" class="hidden space-y-6">
+
+        <!-- MODE ANNOUNCEMENT BANNER -->
+        <div class="p-3.5 rounded-xl border bg-amber-50/80 border-amber-200 flex flex-wrap items-center justify-between text-xs transition-colors">
+          <div class="flex items-center gap-2 text-amber-950 font-medium">
+            <i data-lucide="scale" class="w-4 h-4 text-amber-600"></i>
+            <span><strong>Quotation Comparison Maker Active:</strong> Enter your sent RFQ subject. The system scans email threads, applies SHA-256 deduplication to save AI tokens, and extracts <strong>Price</strong>, <strong>Lead Time</strong>, and <strong>OEM vs Original</strong> condition side-by-side.</span>
+          </div>
+          <span class="text-[11px] font-semibold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200/60">Multi-Supplier Analysis</span>
+        </div>
+
+        <!-- RFQ SEARCH & MAILBOX CONNECTOR CARD -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="mail-search" class="w-5 h-5 text-amber-600"></i>
+                Search Mailbox by RFQ Subject
+              </h2>
+              <p class="text-xs text-slate-500">Extracts quotations sent by suppliers across email replies and attached PDFs / Excel sheets</p>
+            </div>
+            
+            <!-- Action Buttons & Mailbox Connection Status Pill -->
+            <div class="flex items-center gap-2.5">
+              <button id="btnClearComparisonMaker" type="button" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer" title="Clear search, scan results, and comparison matrix">
+                <i data-lucide="trash-2" class="w-4 h-4 text-rose-600"></i>
+                <span>Clear Comparison</span>
+              </button>
+
+              <button id="btnOpenSavedComparisonsModal" type="button" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
+                <i data-lucide="folder-clock" class="w-4 h-4 text-amber-600"></i>
+                <span>Saved Comparisons (<span id="savedCompsCountBadge">0</span>)</span>
+              </button>
+
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="font-medium text-slate-700">Mailbox:</span>
+                <span id="compareMailboxUserBadge" class="font-mono text-slate-600 text-[11px]">project@apmerinservices.com.my</span>
+                <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-semibold">IMAP & Outlook</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Search Input Bar -->
+          <div class="flex flex-col sm:flex-row items-stretch gap-3 pt-1">
+            <div class="relative flex-1">
+              <i data-lucide="search" class="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5"></i>
+              <input type="text" id="compareSearchInput" 
+                placeholder="e.g. RFQ FOR MEAN WELL- POWER SUPPLY (CHM-e-176/2026-I006) or RFQ - M260378..."
+                class="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-amber-500 rounded-xl text-sm font-medium outline-none transition shadow-2xs font-mono-num">
+              <button id="btnClearCompareSearch" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <button id="btnCompareSearch" class="px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-sm rounded-xl shadow-md shadow-amber-500/25 hover:shadow-lg transition flex items-center justify-center gap-2 shrink-0 active:scale-[0.98]">
+              <i data-lucide="mail-search" class="w-4 h-4"></i>
+              <span id="btnCompareSearchText">Scan & Find Emails</span>
+            </button>
+          </div>
+
+          <!-- Quick Auto-Complete Suggestions (Recent RFQs found in user's Inbox) -->
+          <div class="pt-1">
+            <div class="flex items-center gap-2 text-xs text-slate-500 mb-2">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Recent RFQs in your Mailbox (Click to auto-fill):</span>
+              <button id="btnRefreshRecentRfqs" class="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-medium ml-1">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+              </button>
+            </div>
+            <div id="recentRfqChips" class="flex flex-wrap gap-2">
+              <span class="text-xs text-slate-400 italic">Loading recent RFQs from inbox...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE PROGRESS & TOKEN SAVINGS BANNER (Shown while extracting or after extraction) -->
+        <div id="compareProgressSection" class="hidden bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4 animate-in fade-in duration-200">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-3">
+              <div id="compareProgressSpinner" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+              </div>
+              <div>
+                <h3 id="compareProgressStatusTitle" class="text-sm font-bold text-slate-800">Processing Mailbox & Extracting Quotes...</h3>
+                <p id="compareProgressStatusSub" class="text-xs text-slate-500">Scanning email replies, deduplicating attachments, and analyzing quotation details</p>
+              </div>
+            </div>
+
+            <!-- SMART TOKEN SAVINGS BADGE -->
+            <div id="compareTokenSavingsBadge" class="hidden flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">
+              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+              <span id="compareTokenSavingsText">Smart Deduplication Saved ~12,500 AI Tokens</span>
+            </div>
+          </div>
+
+          <!-- Step Progress Badges -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div id="stepProgress1" class="p-2.5 rounded-lg border bg-slate-50 border-slate-200 text-slate-600 flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">1</span>
+              <span>1. Mailbox Search</span>
+            </div>
+            <div id="stepProgress2" class="p-2.5 rounded-lg border bg-slate-50 border-slate-200 text-slate-600 flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">2</span>
+              <span>2. Thread & Attachment Scan</span>
+            </div>
+            <div id="stepProgress3" class="p-2.5 rounded-lg border bg-slate-50 border-slate-200 text-slate-600 flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">3</span>
+              <span>3. Smart SHA-256 Deduplication</span>
+            </div>
+            <div id="stepProgress4" class="p-2.5 rounded-lg border bg-slate-50 border-slate-200 text-slate-600 flex items-center gap-2">
+              <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px]">4</span>
+              <span>4. AI Price & Factor Extraction</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- STAGE 1: EMAIL DISCOVERY & THREAD LIFECYCLE REVIEW SECTION               -->
+        <!-- ========================================================================= -->
+        <div id="compareEmailReviewSection" class="hidden space-y-5 animate-in fade-in duration-200">
+
+          <!-- TOP BANNER: INITIAL RFQ SENDER & THREAD OVERVIEW -->
+          <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 shadow-md border border-slate-800 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-400 flex items-center justify-center">
+                  <i data-lucide="send" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs uppercase font-bold tracking-wider text-indigo-400">Initial RFQ Originator</span>
+                    <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono border border-slate-700">Strictly from "From:" Header (CC Ignored)</span>
+                  </div>
+                  <h3 class="text-base font-bold text-white flex items-center gap-2 mt-0.5">
+                    <span id="discoveryInitialSenderName">Kirthana</span>
+                    <span id="discoveryInitialSenderEmail" class="text-xs font-mono text-indigo-300 font-normal">&lt;sales02@apmerinservices.com.my&gt;</span>
+                  </h3>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2.5 text-xs">
+                <div class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl text-slate-300 flex items-center gap-1.5">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                  <span>Sent Date: <strong id="discoveryInitialSentDate" class="text-white">-</strong></span>
+                </div>
+                <div class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl text-slate-300 flex items-center gap-1.5">
+                  <i data-lucide="mail" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  <span>Total Messages: <strong id="discoveryTotalEmailsCount" class="text-white">0</strong></span>
+                </div>
+                <div class="px-3 py-1.5 bg-emerald-950/60 border border-emerald-700/60 rounded-xl text-emerald-300 flex items-center gap-1.5">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Suppliers Found: <strong id="discoverySuppliersCount" class="text-white">0</strong></span>
+                </div>
+
+                <!-- VIEW RFQ DETAILS & EMAIL BUTTON -->
+                <button id="btnViewDiscoveryRfqDetails" type="button" class="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-md border border-indigo-400/40 transition cursor-pointer hover:shadow-indigo-500/30">
+                  <i data-lucide="eye" class="w-4 h-4 text-white"></i>
+                  <span>View RFQ Details &amp; Email</span>
+                  <span id="discoveryRfqImagesBadge" class="hidden px-1.5 py-0.5 bg-white/20 text-white rounded text-[10px] font-mono">0 attachments</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- INTERNAL REPLIES DIFFERENCE NOTIFICATION (If someone else from AP Merin replied) -->
+            <div id="discoveryInternalRepliesNotice" class="hidden p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs flex items-start gap-2.5 text-amber-200">
+              <i data-lucide="users" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+              <div class="space-y-1">
+                <span class="font-bold text-amber-300">Internal AP Merin Team Clarifications / Replies Detected:</span>
+                <div id="discoveryInternalRepliesList" class="space-y-1 text-[11px] text-amber-200/90 font-mono">
+                  <!-- Populated if other staff like Farah or Sharrvendran replied -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Subject & Thread Summary -->
+            <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 pt-0.5 border-t border-slate-800/60">
+              <div class="flex items-center gap-2 truncate max-w-2xl">
+                <span class="font-semibold text-slate-300">RFQ Subject:</span>
+                <span id="discoveryRfqSubject" class="font-mono text-white truncate">-</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="btnToggleDiscoveryRfqDrawer" type="button" class="text-xs font-semibold text-indigo-300 hover:text-white flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700/80 px-2.5 py-1 rounded-lg border border-slate-700 transition cursor-pointer">
+                  <i data-lucide="layout-list" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  <span>Quick RFQ Preview</span>
+                  <i data-lucide="chevron-down" id="discoveryRfqDrawerIcon" class="w-3.5 h-3.5 text-slate-400 transition-transform"></i>
+                </button>
+                <span class="text-[11px] text-indigo-300 font-medium hidden sm:inline">Verify detected messages below before clicking approve</span>
+              </div>
+            </div>
+
+            <!-- INLINE RFQ QUICK PREVIEW DRAWER -->
+            <div id="discoveryRfqDrawer" class="hidden mt-3 p-4 bg-slate-950/70 border border-slate-700/80 rounded-xl space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded font-semibold text-[11px]">Original Inquiry Email</span>
+                  <span id="discoveryDrawerRecipients" class="text-slate-400 font-mono text-[11px] truncate max-w-md"></span>
+                </div>
+                <button type="button" onclick="window.openDiscoveryRfqDetails()" class="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="maximize-2" class="w-3 h-3"></i> Open Full View (with zoomable diagrams &amp; docs)
+                </button>
+              </div>
+
+              <!-- Attached Documents Section (PDFs, Quotation Sheets, Requisitions, Excel) -->
+              <div id="discoveryDrawerDocsContainer" class="hidden space-y-2">
+                <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-400"></i>
+                  Attached Documents &amp; Specifications (<span id="discoveryDrawerDocsCount">0</span>)
+                </span>
+                <div id="discoveryDrawerDocsList" class="space-y-1.5">
+                  <!-- Document cards -->
+                </div>
+              </div>
+
+              <!-- Attached Diagrams / Images Strip if present -->
+              <div id="discoveryDrawerImagesContainer" class="hidden space-y-2">
+                <span class="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                  <i data-lucide="images" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  Attached Drawings &amp; Technical Diagrams (<span id="discoveryDrawerImagesCount">0</span>)
+                </span>
+                <div id="discoveryDrawerImagesStrip" class="flex items-center gap-2.5 overflow-x-auto pb-1">
+                  <!-- Thumbnail previews -->
+                </div>
+              </div>
+
+              <!-- Email Body Excerpt -->
+              <div id="discoveryDrawerBodyExcerpt" class="max-h-60 overflow-y-auto p-3 bg-slate-900/90 rounded-lg text-slate-200 text-xs font-sans leading-relaxed border border-slate-800 email-html-container select-text">
+                <!-- Clean body or html preview -->
+              </div>
+            </div>
+          </div>
+
+          <!-- SUPPLIERS & EMAILS DISCOVERY REVIEW CONTAINER -->
+          <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <i data-lucide="list-checks" class="w-4 h-4 text-amber-600"></i>
+                  Review Discovered Suppliers & Messages
+                </h3>
+                <p class="text-xs text-slate-500">Check whether the system located the correct supplier replies. Uncheck any irrelevant message.</p>
+              </div>
+
+              <!-- Bulk Selection Controls -->
+              <div class="flex items-center gap-2">
+                <button id="btnSelectAllSuppliers" type="button" class="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2 py-1 hover:bg-blue-50 rounded transition">
+                  Select All
+                </button>
+                <span class="text-slate-300">•</span>
+                <button id="btnDeselectAllSuppliers" type="button" class="text-xs text-slate-500 hover:text-slate-700 font-semibold px-2 py-1 hover:bg-slate-100 rounded transition">
+                  Deselect All
+                </button>
+              </div>
+            </div>
+
+            <!-- SUPPLIERS LIST CONTAINER -->
+            <div id="discoverySuppliersList" class="space-y-3">
+              <!-- Dynamically generated supplier review cards -->
+            </div>
+
+            <!-- ALL SCANNED EMAILS ACCORDION -->
+            <div class="pt-2">
+              <button id="btnToggleAllScannedEmails" type="button" class="w-full py-2.5 px-4 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-between transition">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="inbox" class="w-4 h-4 text-slate-500"></i>
+                  <span>View All Raw Scanned Email Messages (<span id="discoveryRawEmailsCount">0</span> emails)</span>
+                </span>
+                <i id="discoveryRawEmailsIcon" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+
+              <div id="discoveryRawEmailsWrapper" class="hidden mt-3 space-y-2 max-h-96 overflow-y-auto pr-1">
+                <!-- List of individual raw messages with preview buttons -->
+              </div>
+            </div>
+
+            <!-- STAGE 1 APPROVAL & PROCEED ACTION BAR -->
+            <div class="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-amber-50/60 p-4 rounded-xl border border-amber-200/70">
+              <div class="flex items-center gap-2 text-xs text-amber-950 font-medium">
+                <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600 shrink-0"></i>
+                <span>Ready to extract quotes? Click <strong>Approve & Extract Quotations</strong> to continue to factor comparison.</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button id="btnCancelEmailDiscovery" type="button" class="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl transition shadow-2xs">
+                  Cancel Search
+                </button>
+
+                <button id="btnApproveAndExtract" type="button" class="px-6 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-500/25 transition flex items-center gap-2 transform active:scale-95">
+                  <i data-lucide="check-check" class="w-4 h-4"></i>
+                  <span id="btnApproveAndExtractText">Approve & Extract Quotations</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- COMPARISON RESULTS VIEW CONTAINER (Shown after quotes are compiled) -->
+        <div id="compareResultsSection" class="hidden space-y-6">
+
+          <!-- TOOLBAR & CURRENCY SELECTOR BAR -->
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              
+              <!-- Left: Currency Selection & Manual Exchange Rate (Matching Image 2) -->
+              <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+                
+                <!-- 1. Output Currency (Target) -->
+                <div class="min-w-[190px]">
+                  <label for="compareTargetCurrency" class="text-xs font-semibold text-slate-600 block mb-1.5">
+                    Output Currency (Target)
+                  </label>
+                  <select id="compareTargetCurrency" class="w-full bg-blue-50/50 border border-blue-200 text-blue-900 text-sm font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="MYR" selected>MYR - Ringgit (RM)</option>
+                    <option value="USD">USD - US Dollar ($)</option>
+                    <option value="EUR">EUR - Euro (€)</option>
+                    <option value="SGD">SGD - Singapore Dollar (S$)</option>
+                    <option value="GBP">GBP - British Pound (£)</option>
+                    <option value="AUD">AUD - Australian Dollar (A$)</option>
+                    <option value="JPY">JPY - Japanese Yen (¥)</option>
+                    <option value="CNY">CNY - Chinese Yuan (¥)</option>
+                    <option value="AED">AED - UAE Dirham</option>
+                  </select>
+                </div>
+
+                <!-- 2. Manual Exchange Rate Input (Matching Image 2) -->
+                <div class="min-w-[240px] sm:min-w-[280px]">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <label class="text-xs font-semibold text-slate-600">Manual Exchange Rate</label>
+                    <button id="btnResetCompareFx" type="button" class="text-[10px] text-blue-600 hover:underline font-medium">Reset to standard rate</button>
+                  </div>
+                  <div class="flex items-center">
+                    <span id="compareFxInputPrefix" class="text-xs font-mono bg-slate-100 border border-r-0 border-slate-300 px-3 py-2 rounded-l-xl text-slate-600 font-bold whitespace-nowrap">
+                      1 USD =
+                    </span>
+                    <input type="number" step="0.0001" min="0.0001" id="compareFxRateInput" value="4.4500" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm font-mono-num font-bold px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <span id="compareFxInputSuffix" class="text-xs font-mono bg-slate-100 border border-l-0 border-slate-300 px-3 py-2 rounded-r-xl text-slate-600 font-bold">
+                      MYR
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Stats Summary -->
+                <div id="compareStatsSummary" class="text-xs text-slate-600 flex items-center gap-3 pt-4 sm:pt-4 border-l border-slate-200 pl-4 sm:pl-6">
+                  <span>Total RFQ Items: <strong id="compareTotalItemsCount" class="text-slate-900 font-bold">0</strong></span>
+                  <span>•</span>
+                  <span>Suppliers Quoted: <strong id="compareSuppliersCount" class="text-slate-900 font-bold">0</strong></span>
+                </div>
+              </div>
+
+              <!-- Right: Action Export Buttons -->
+              <div class="flex items-center gap-2 pt-2 sm:pt-0">
+                <button id="btnSaveCompareToSync" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer" title="Save to Database & Sync across Windows and Apple laptops">
+                  <i data-lucide="save" class="w-4 h-4"></i>
+                  <span id="btnSaveCompareText">Save Comparison</span>
+                </button>
+
+                <button id="btnExportCompareExcel" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                  <span>Export to Excel (.xlsx)</span>
+                </button>
+
+                <button id="btnTransferWinnerToQuote" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                  <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
+                  <span>Send to Quotation Mode</span>
+                </button>
+
+                <button id="btnTransferWinnerToPO" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                  <i data-lucide="shopping-bag" class="w-4 h-4"></i>
+                  <span>Generate PO</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- BASELINE RFQ MASTER DETAILS & COMPLIANCE BAR -->
+          <div id="compareBaselineSection" class="hidden bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-2xl p-5 shadow-sm border border-slate-800 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-500/40 text-blue-400 flex items-center justify-center">
+                  <i data-lucide="anchor" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <span id="baselineVesselName">AFRA MARE</span>
+                    <span id="baselineRfqBadge" class="text-[11px] font-mono px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded">ARM-e-107/2026-I004</span>
+                  </h3>
+                  <p class="text-xs text-slate-400" id="baselineEquipmentInfo">Equipment: NANIWA PUMP MFG.CO.LTD • Model: FEWV-350</p>
+                  <p class="text-[11px] text-indigo-300 font-mono mt-0.5" id="baselineOriginatorInfo"></p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button id="btnViewBaselineEmail" type="button" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Read Original RFQ Inquiry Email">
+                  <i data-lucide="mail" class="w-3.5 h-3.5"></i>
+                  <span>Read RFQ Email</span>
+                </button>
+                <button id="btnViewBaselineDoc" type="button" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Preview Original RFQ Inquiry Sheet">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                  <span>Preview Original RFQ Sheet</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Requested Items List Bar -->
+            <div>
+              <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Requested Baseline Items (<span id="baselineItemsCount">0</span> items to compare):</span>
+                <span class="text-blue-300 font-normal">All supplier quotes are checked against these master items</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-xs" id="baselineItemsChips">
+                <!-- Dynamically populated chips of requested items -->
+              </div>
+            </div>
+          </div>
+
+          <!-- SUPPLIER SUMMARY CARDS GRID -->
+          <div>
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <i data-lucide="users" class="w-4 h-4 text-amber-600"></i>
+              Quotation Summary per Supplier
+            </h3>
+            <div id="compareSupplierCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- SIDE-BY-SIDE LINE ITEM COMPARISON MATRIX -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/60">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="table" class="w-4 h-4 text-amber-600"></i>
+                  Line Item Comparison Matrix
+                </h3>
+                <p class="text-xs text-slate-500">Side-by-side breakdown of Unit Price, Total, Lead Time, and OEM vs Original Authenticity</p>
+              </div>
+
+              <!-- Legend Badges -->
+              <div class="flex items-center gap-2 text-[11px]">
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
+                  <i data-lucide="check" class="w-3 h-3 text-emerald-600"></i> Lowest Price
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold border border-blue-200">
+                  <i data-lucide="clock" class="w-3 h-3 text-blue-600"></i> Fastest Delivery
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  🌟 Original
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                  ⚙️ OEM
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                  🔄 Replacement
+                </span>
+              </div>
+            </div>
+
+            <!-- Interactive Scrollable Comparison Table -->
+            <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table id="compareMatrixTable" class="w-full text-left border-collapse text-xs">
+                <!-- Dynamically generated table with sticky headers -->
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- COLLAPSIBLE MANUAL QUOTE UPLOAD / OFFLINE SECTION -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+          <div class="flex items-center justify-between cursor-pointer select-none" id="toggleManualUploadAccordion">
+            <div class="flex items-center gap-2">
+              <span class="p-1.5 bg-slate-100 text-slate-600 rounded-lg"><i data-lucide="file-up" class="w-4 h-4"></i></span>
+              <h3 class="font-semibold text-slate-800 text-sm">Need to compare offline quotation files or pasted quotes?</h3>
+              <span class="text-xs text-slate-400">| Upload PDFs, Excel sheets, or paste supplier email text manually</span>
+            </div>
+            <button class="text-slate-400 hover:text-slate-600 text-xs flex items-center gap-1 font-medium">
+              <span id="manualAccordionLabel">Show Manual Uploader</span>
+              <i id="manualAccordionIcon" data-lucide="chevron-down" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div id="manualUploadContent" class="hidden space-y-4 pt-3 border-t border-slate-100">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- File Upload Dropzone -->
+              <div id="compareDropzone" class="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-amber-50/30 flex flex-col items-center justify-center">
+                <i data-lucide="cloud-upload" class="w-8 h-8 text-amber-600 mb-2"></i>
+                <p class="text-xs font-bold text-slate-700">Drop multiple supplier quotation files here</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Supports PDF (.pdf), Excel (.xlsx, .xls), or Word (.docx)</p>
+                <input type="file" id="compareFileInput" multiple accept=".pdf,.xlsx,.xls,.docx,.doc,.txt,.csv" class="hidden">
+                <div id="compareUploadedFilesList" class="mt-2 text-left w-full text-xs text-slate-600 space-y-1"></div>
+              </div>
+
+              <!-- Pasted Email Body Text -->
+              <div class="flex flex-col space-y-2">
+                <label class="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  <i data-lucide="clipboard-paste" class="w-3.5 h-3.5 text-slate-400"></i>
+                  Or paste email text with costs:
+                </label>
+                <textarea id="comparePastedText" rows="4" placeholder="Dear Sir, We quote as follows: Part 1: USD 50/pc (Lead time: 2 weeks, Original Genuine)..."
+                  class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition flex-1"></textarea>
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button id="btnExtractManualQuotes" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                <i data-lucide="play" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>Process Uploaded Quotes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- End #quotationCompareView -->
+
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODALS                                     -->
+  <!-- ========================================== -->
+
+  <!-- MODAL: IMAGE / DOCUMENT FULL RESOLUTION ZOOM WITH INTERACTIVE ZOOM CONTROLS -->
+  <div id="modalImageZoom" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 hidden">
+    <div class="bg-white rounded-2xl max-w-6xl w-full h-[94vh] shadow-2xl flex flex-col overflow-hidden border border-white/20">
+      
+      <!-- Top Inspector Header & Zoom Toolbar -->
+      <div class="px-5 py-3 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3 select-none">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+            <i data-lucide="zoom-in" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 id="zoomModalTitle" class="font-bold text-slate-800 text-sm">Document Inspector</h3>
+            <p class="text-[11px] text-slate-500">Scroll mouse wheel to zoom • Click & drag to pan</p>
+          </div>
+        </div>
+
+        <!-- Interactive Zoom Controls Toolbar -->
+        <div class="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+          <!-- Zoom Out -->
+          <button id="btnZoomOut" class="p-1.5 hover:bg-slate-100 text-slate-700 hover:text-blue-600 rounded-lg transition" title="Zoom Out (-)">
+            <i data-lucide="minus" class="w-4 h-4"></i>
+          </button>
+          
+          <!-- Zoom Level Badge -->
+          <span id="zoomLevelDisplay" class="text-xs font-mono font-bold px-2.5 py-1 text-slate-700 min-w-[54px] text-center bg-slate-50 rounded-md border border-slate-200/60">
+            100%
+          </span>
+
+          <!-- Zoom In -->
+          <button id="btnZoomIn" class="p-1.5 hover:bg-slate-100 text-slate-700 hover:text-blue-600 rounded-lg transition" title="Zoom In (+)">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+          </button>
+
+          <div class="w-px h-5 bg-slate-200 mx-1"></div>
+
+          <!-- Reset (100%) -->
+          <button id="btnZoomReset" class="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition" title="Reset Zoom">
+            Reset (100%)
+          </button>
+
+          <!-- Fit Width -->
+          <button id="btnZoomFitWidth" class="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition flex items-center gap-1" title="Fit to Width">
+            <i data-lucide="move-horizontal" class="w-3.5 h-3.5"></i> Fit Width
+          </button>
+
+          <div class="w-px h-5 bg-slate-200 mx-1"></div>
+
+          <!-- Close Modal -->
+          <button id="btnCloseZoomModal" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition ml-1" title="Close Inspector (Esc)">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Zoom Viewport Container with Pan & Drag -->
+      <div id="zoomViewport" class="flex-1 bg-slate-900/95 overflow-hidden relative flex items-center justify-center cursor-grab active:cursor-grabbing select-none p-4">
+        <div id="zoomImageWrapper" class="transition-transform duration-75 ease-out origin-center flex items-center justify-center">
+          <img id="zoomModalImg" src="" alt="Full Resolution Document" class="max-w-none rounded shadow-2xl bg-white select-none pointer-events-none transition-shadow">
+        </div>
+      </div>
+
+      <!-- Bottom Status / Hint Bar -->
+      <div class="px-4 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+        <span>💡 Use mouse wheel or buttons above to zoom from 25% to 500%. Drag to pan across pages.</span>
+        <span id="zoomDimensionsTag" class="font-mono text-slate-600">High Resolution</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: DEDICATED QUOTE SOURCE PREVIEW (DOCUMENT OR CLEAN EMAIL) -->
+  <div id="modalSourcePreview" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 hidden">
+    <div class="bg-white rounded-2xl max-w-5xl w-full h-[92vh] shadow-2xl flex flex-col overflow-hidden border border-white/20">
+      
+      <!-- Preview Header -->
+      <div class="px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3 select-none">
+        <div class="flex items-center gap-2.5">
+          <div id="sourcePreviewIconBox" class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+            <i id="sourcePreviewIcon" data-lucide="file-text" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 id="sourcePreviewTitle" class="font-bold text-slate-800 text-sm">Quotation Source Preview</h3>
+            <p id="sourcePreviewSubtitle" class="text-[11px] text-slate-500 font-mono">Original Document or Email Record</p>
+          </div>
+        </div>
+
+        <!-- Mode Switcher (When both Email & Document are available) -->
+        <div id="sourcePreviewModeToggle" class="hidden items-center bg-slate-200/80 p-1 rounded-xl gap-1">
+          <button id="btnSwitchToEmailView" type="button" class="px-3 py-1 bg-white text-slate-900 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition">
+            <i data-lucide="mail" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span>Email Reply</span>
+          </button>
+          <button id="btnSwitchToDocView" type="button" class="px-3 py-1 text-slate-600 hover:text-slate-900 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-600"></i>
+            <span>Attached Quotation</span>
+          </button>
+        </div>
+
+        <!-- Page Navigation / Controls (for multi-page PDF documents) -->
+        <div id="sourcePreviewDocControls" class="hidden items-center gap-2">
+          <button id="btnSourcePrevPage" type="button" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Prev
+          </button>
+          <span id="sourcePreviewPageIndicator" class="text-xs font-mono px-2 text-slate-600 font-bold">Page 1 of 1</span>
+          <button id="btnSourceNextPage" type="button" class="px-2.5 py-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+            Next <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <!-- Direct PDF / Excel Download Button -->
+        <a id="btnSourceOpenPdf" href="#" class="hidden px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold items-center gap-1.5 transition shadow-2xs">
+          <i data-lucide="external-link" class="w-3.5 h-3.5 text-amber-600"></i>
+          <span>Open Full PDF</span>
+        </a>
+
+        <button id="btnCloseSourcePreviewModal" type="button" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition ml-2">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Preview Body Container -->
+      <div class="flex-1 bg-slate-900/95 overflow-auto flex items-center justify-center p-4 relative" id="sourcePreviewContainer">
+        
+        <!-- If Document: Interactive PDF / High-res image -->
+        <div id="sourceDocViewWrapper" class="hidden max-w-full max-h-full flex items-center justify-center relative w-full h-full">
+          <button id="btnReturnToEmailFromDoc" type="button" class="absolute top-2 left-2 z-10 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 backdrop-blur border border-white/20 shadow-lg transition">
+            <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-blue-400"></i>
+            <span>Back to Email Reply</span>
+          </button>
+          <div id="sourceDocLoading" class="hidden flex flex-col items-center justify-center gap-3 text-white">
+            <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-amber-400"></i>
+            <span class="text-xs font-semibold text-slate-200">Loading quotation document from mailbox...</span>
+          </div>
+          <iframe id="sourcePreviewFrame" src="" class="hidden w-full h-full min-h-[80vh] rounded-xl border-0 shadow-2xl bg-white"></iframe>
+          <img id="sourcePreviewImg" src="" alt="Source Document" class="hidden max-h-[82vh] max-w-full rounded shadow-2xl bg-white object-contain">
+          
+          <!-- If Excel Spreadsheet (.xlsx, .xls, .csv): Interactive Table Viewer -->
+          <div id="sourceExcelViewWrapper" class="hidden w-full h-full min-h-[80vh] max-h-[84vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
+            <div class="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
+              <div class="flex items-center gap-1.5 overflow-x-auto" id="sourceExcelSheetTabs"></div>
+              <div class="text-xs text-slate-500 font-mono" id="sourceExcelRowStats"></div>
+            </div>
+            <div class="flex-1 overflow-x-auto overflow-y-auto p-4 bg-slate-50 relative" id="sourceExcelTableContainer" style="overflow-x: auto !important; overflow-y: auto !important;"></div>
+          </div>
+        </div>
+
+        <!-- If Email: Authentic Outlook / Webmail Card -->
+        <div id="sourceEmailViewWrapper" class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 sm:p-7 text-slate-800 space-y-4 max-h-[84vh] overflow-y-auto border border-slate-200">
+          
+          <!-- Multiple Messages Tabs (If supplier sent more than 1 email in thread) -->
+          <div id="sourceEmailThreadTabsWrapper" class="hidden flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto">
+            <span class="text-xs font-semibold text-slate-400 flex items-center gap-1 shrink-0 mr-1">
+              <i data-lucide="message-square" class="w-3.5 h-3.5 text-blue-500"></i> Thread Messages:
+            </span>
+            <div id="sourceEmailThreadTabs" class="flex items-center gap-1.5 flex-wrap">
+              <!-- Dynamically populated buttons for each email -->
+            </div>
+          </div>
+
+          <!-- Outlook Email Header -->
+          <div class="border-b border-slate-200 pb-4 space-y-3">
+            <!-- Subject Line -->
+            <h3 class="font-bold text-slate-900 text-base sm:text-lg leading-snug tracking-tight" id="sourceEmailSubject">
+              Email Subject
+            </h3>
+
+            <!-- Sender & Recipient Meta Details -->
+            <div class="flex items-start justify-between gap-4 pt-1">
+              <div class="flex items-center gap-3">
+                <!-- Avatar circle with initials -->
+                <div id="sourceEmailAvatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shadow-sm shrink-0 uppercase tracking-wider">
+                  OT
+                </div>
+                <div class="space-y-0.5">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-bold text-slate-900 text-sm" id="sourceEmailSender">Oceantech Ltd</span>
+                    <span class="text-xs font-mono text-slate-500" id="sourceEmailFrom">&lt;oceantech@ost.gr&gt;</span>
+                  </div>
+                  <div class="text-xs text-slate-500 flex flex-wrap items-center gap-2">
+                    <span>To: <strong id="sourceEmailTo" class="font-medium text-slate-700">sales02@apmerinservices.com.my</strong></span>
+                    <span id="sourceEmailCcWrapper" class="hidden text-slate-400">• Cc: <span id="sourceEmailCc" class="text-slate-600 font-mono"></span></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Timestamp -->
+              <div class="text-right shrink-0">
+                <span id="sourceEmailDate" class="text-xs font-mono text-slate-500 block">Tue, 08 Sep 2026 16:15:23</span>
+              </div>
+            </div>
+
+            <!-- Attached Documents Container (PDFs, Quotation Sheets, Requisitions, Excel) -->
+            <div id="sourceEmailDocsContainer" class="hidden pt-2 space-y-2 border-t border-slate-100 mt-2">
+              <div class="flex items-center justify-between text-xs text-slate-500 font-medium">
+                <span class="flex items-center gap-1.5 font-bold text-slate-800">
+                  <i data-lucide="paperclip" class="w-3.5 h-3.5 text-amber-600"></i>
+                  Attached Documents &amp; Specifications (<span id="sourceEmailDocsCount">0</span>)
+                </span>
+                <span class="text-[11px] text-slate-400">Official documents attached in this email</span>
+              </div>
+              <div id="sourceEmailDocsList" class="space-y-2">
+                <!-- Dynamically populated document cards -->
+              </div>
+            </div>
+
+            <!-- Legacy Attached Quotation Document Bar -->
+            <div id="sourceEmailAttachmentBar" class="hidden pt-1">
+              <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs hover:border-amber-300 transition">
+                <div class="flex items-center gap-2.5 truncate">
+                  <div class="p-1.5 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                  </div>
+                  <div class="truncate">
+                    <span class="font-bold text-slate-800" id="sourceEmailAttachedDocName">Quotation.pdf</span>
+                    <span class="text-slate-400 text-[11px] ml-1 font-mono" id="sourceEmailAttachedDocSize">(326 KB)</span>
+                  </div>
+                </div>
+                <button type="button" id="btnViewAttachedQuoteDoc" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition shrink-0">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                  <span>Inspect Attached Quotation</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Email Body Area (Exact authentic supplier message text) -->
+          <div class="pt-1 text-xs sm:text-sm font-sans leading-relaxed text-slate-800 select-text" id="sourceEmailBody">
+            <!-- Exact clean message text or resolved HTML -->
+          </div>
+
+          <!-- Attached Images & Technical Drawings Gallery -->
+          <div id="sourceEmailImagesGallery" class="hidden pt-4 border-t border-slate-200 mt-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <i data-lucide="images" class="w-3.5 h-3.5 text-blue-600"></i>
+                Attached Images & Technical Diagrams (<span id="sourceEmailImagesCount">0</span>)
+              </span>
+              <span class="text-[11px] text-slate-400">Click any image to inspect full size</span>
+            </div>
+            <div id="sourceEmailImagesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <!-- Dynamically rendered image cards -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Preview Footer -->
+      <div class="px-5 py-2.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+        <span id="sourcePreviewFooterHint">Verified extraction source</span>
+        <span id="sourcePreviewFilenameBadge" class="font-mono text-slate-600 font-semibold"></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: IMAGE LIGHTBOX / FULL RESOLUTION VIEWER -->
+  <div id="modalImageLightbox" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[60] flex items-center justify-center p-3 sm:p-5 hidden select-none">
+    <div class="relative max-w-5xl max-h-[94vh] flex flex-col items-center justify-center bg-slate-900 rounded-2xl overflow-hidden border border-white/10 shadow-2xl w-full">
+      <!-- Top Toolbar -->
+      <div class="w-full px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-white text-xs">
+        <div class="flex items-center gap-2 truncate">
+          <i data-lucide="image" class="w-4 h-4 text-blue-400 shrink-0"></i>
+          <span id="lightboxImageName" class="font-mono font-medium truncate">image.png</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a id="lightboxDownloadBtn" href="#" download="image.png" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1 transition">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Download
+          </a>
+          <button id="btnCloseLightboxModal" type="button" class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition ml-1 cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Image Display -->
+      <div class="p-3 max-h-[84vh] w-full overflow-auto flex items-center justify-center bg-slate-950/50">
+        <img id="lightboxImg" src="" alt="Enlarged view" class="max-h-[80vh] max-w-full rounded shadow-lg object-contain">
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CROSS-DEVICE CLOUD SYNC CENTER      -->
+  <!-- ========================================== -->
+  <div id="modalSyncCenter" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto border border-slate-200">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
+            <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+              Cross-Device Cloud Sync Center
+              <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">Windows & macOS</span>
+            </h3>
+            <p class="text-xs text-slate-500">Real-time persistence and automatic sync across your Windows and Apple laptops</p>
+          </div>
+        </div>
+        <button id="btnCloseSyncModal" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Device & Sync Health Card -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Current Device</span>
+          <div class="flex items-center gap-2">
+            <i id="syncCurrentPlatformIcon" data-lucide="laptop" class="w-4 h-4 text-indigo-600 shrink-0"></i>
+            <span id="syncCurrentDeviceName" class="font-bold text-slate-800 text-xs truncate">Detecting...</span>
+          </div>
+          <span id="syncCurrentDeviceId" class="font-mono text-[10px] text-slate-400 block truncate">ID: -</span>
+        </div>
+
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Sync Mode</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="syncModeLabel" class="font-bold text-slate-800 text-xs">Local SQLite Database</span>
+          </div>
+          <span id="syncLastTimeLabel" class="text-[10px] text-slate-500 block">Synced Just Now</span>
+        </div>
+
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Synced Records</span>
+          <div class="flex items-center gap-3 text-xs font-bold text-slate-800">
+            <span><strong id="syncCountComparisons" class="text-indigo-600 font-extrabold text-sm">0</strong> Comparisons</span>
+            <span>•</span>
+            <span><strong id="syncCountPOs" class="text-emerald-600 font-extrabold text-sm">0</strong> POs</span>
+          </div>
+          <span class="text-[10px] text-slate-400 block">Encrypted SQLite Store</span>
+        </div>
+      </div>
+
+      <!-- Shared Cloud Drive Folder Sync Config -->
+      <div class="p-5 bg-gradient-to-br from-indigo-50/50 via-white to-blue-50/40 border border-indigo-100 rounded-2xl space-y-4 shadow-2xs">
+        <div class="flex items-start justify-between gap-3">
+          <div class="space-y-1">
+            <label class="block text-xs font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="cloud" class="w-4 h-4 text-blue-600"></i>
+              Shared Cloud Drive Sync (OneDrive, Google Drive, iCloud, Dropbox)
+            </label>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              To have changes automatically appear on both your Windows laptop and Apple laptop without manual file transfers, select a shared cloud folder.
+            </p>
+          </div>
+        </div>
+
+        <!-- Detected Cloud Folders Quick Select -->
+        <div class="space-y-2">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Auto-Detected Cloud Drives on this Laptop:</span>
+          <div id="syncDetectedFoldersContainer" class="flex flex-wrap gap-2">
+            <span class="text-xs text-slate-400 italic">Scanning drives...</span>
+          </div>
+        </div>
+
+        <!-- Custom Folder Path Input -->
+        <div class="space-y-2 pt-1">
+          <label class="block text-[11px] font-semibold text-slate-700">Custom Shared Folder Path:</label>
+          <div class="flex items-center gap-2">
+            <input type="text" id="inputSyncSharedFolder" placeholder="e.g. C:\Users\YourName\OneDrive\AP Merin Sync" class="flex-1 px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+            <button id="btnSaveSyncFolder" type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-2xs cursor-pointer">
+              Set Cloud Folder
+            </button>
+            <button id="btnResetSyncFolder" type="button" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer" title="Use Local SQLite Database">
+              Use Local
+            </button>
+          </div>
+          <p id="syncActiveDbPathLabel" class="text-[10px] font-mono text-slate-400 truncate">Database location: -</p>
+        </div>
+      </div>
+
+      <!-- One-Click Export & Import Backup Bundle -->
+      <div class="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+        <label class="block text-xs font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="arrow-down-up" class="w-4 h-4 text-emerald-600"></i>
+          One-Click Sync Bundle Transfer (.apmerin_sync)
+        </label>
+        <p class="text-xs text-slate-500">
+          Transfer all your saved comparisons, customer quotes, and purchase orders directly between laptops using a single transfer file.
+        </p>
+        <div class="flex flex-wrap items-center gap-3 pt-1">
+          <button id="btnExportSyncBundle" type="button" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-2xs transition cursor-pointer">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Export Sync Bundle</span>
+          </button>
+
+          <label class="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs rounded-xl flex items-center gap-2 shadow-2xs transition cursor-pointer">
+            <i data-lucide="upload" class="w-4 h-4 text-blue-600"></i>
+            <span>Import Sync Bundle</span>
+            <input type="file" id="inputImportSyncBundle" accept=".apmerin_sync,.json" class="hidden">
+          </label>
+          <span id="syncImportStatusText" class="text-xs font-semibold text-slate-500"></span>
+        </div>
+      </div>
+
+      <!-- Connected Devices Roster -->
+      <div class="space-y-3">
+        <label class="block text-xs font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="network" class="w-4 h-4 text-slate-600"></i>
+          Registered Devices in Your Sync Network
+        </label>
+        <div id="syncConnectedDevicesList" class="space-y-2 max-h-40 overflow-y-auto">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: SAVED COMPARISONS ARCHIVE           -->
+  <!-- ========================================== -->
+  <div id="modalSavedComparisons" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-7 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto border border-slate-200">
+      
+      <!-- Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30">
+            <i data-lucide="folder-clock" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Saved Quotation Comparisons Archive</h3>
+            <p class="text-xs text-slate-500">Browse and reload past RFQ comparisons synced across all your devices</p>
+          </div>
+        </div>
+        <button id="btnCloseSavedCompsModal" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Search Filter Bar -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-3"></i>
+        <input type="text" id="inputFilterSavedComps" placeholder="Filter by RFQ reference, customer, or subject..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 outline-none">
+      </div>
+
+      <!-- Comparison List Container -->
+      <div id="savedCompsListContainer" class="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+        <!-- Dynamically populated cards -->
+      </div>
+
+      <div class="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <span>Click <strong>Load Comparison</strong> to restore the entire comparison matrix, quotes, and attachments.</span>
+        <button id="btnRefreshSavedComps" class="text-amber-700 font-bold hover:underline flex items-center gap-1 cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh List
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: API KEY & SECURITY SETTINGS -->
+  <div id="modalSettings" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i data-lucide="settings" class="w-4 h-4 text-blue-600"></i>
+          <span>Application & Security Settings</span>
+        </h3>
+        <button id="btnCloseSettingsModal" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      
+      <!-- 1. AI Key Configuration -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+          <i data-lucide="key" class="w-3.5 h-3.5 text-blue-600"></i> Gemini Vision API Key
+        </label>
+        <p class="text-xs text-slate-500">
+          Powers document parsing with Gemini Flash Vision.
+        </p>
+        <input type="password" id="inputSettingsApiKey" placeholder="AIzaSy..." class="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none">
+        <p class="text-[10px] text-slate-400">Get your key at <a href="https://aistudio.google.com/" target="_blank" class="text-blue-600 hover:underline">Google AI Studio</a>. Paste your Gemini key here and save changes.</p>
+      </div>
+
+      <!-- Non-Admin Restricted Notice -->
+      <div id="settingsNonAdminNotice" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="p-1.5 bg-amber-100 text-amber-800 rounded-lg"><i data-lucide="lock" class="w-4 h-4"></i></span>
+            <div>
+              <span class="text-xs font-bold text-slate-800 block">User Accounts & Passwords</span>
+              <span class="text-[11px] text-slate-500">Restricted to System Administrator. Only Admin can view credentials.</span>
+            </div>
+          </div>
+          <button type="button" id="btnAdminUnlockToggle" class="px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition flex items-center gap-1.5 shadow-2xs">
+            <i data-lucide="shield" class="w-3.5 h-3.5"></i> Unlock Admin Access
+          </button>
+        </div>
+        <div id="adminUnlockBox" class="hidden pt-2 flex items-center gap-2">
+          <input type="password" id="adminUnlockPass" placeholder="Enter Admin Password" class="flex-1 p-2 border border-slate-300 rounded-lg text-xs font-mono">
+          <button type="button" id="btnVerifyAdminUnlock" class="px-3.5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-xs">Verify</button>
+        </div>
+      </div>
+
+      <!-- Admin-Only 5 Users & Passwords Management -->
+      <div id="settingsAdminUserSection" class="space-y-3 pt-3 border-t border-slate-200 hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <i data-lucide="shield-check" class="w-4 h-4 text-purple-600"></i> User Accounts & Passwords (5 Users)
+            </label>
+            <span class="text-[10px] text-slate-500">Admin Control: View, manage, or update passwords for all 5 team users.</span>
+          </div>
+          <button type="button" id="btnToggleAllPasswords" class="px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition flex items-center gap-1 cursor-pointer">
+            <i id="iconToggleAllPasswords" data-lucide="eye" class="w-3.5 h-3.5"></i> <span id="textToggleAllPasswords">Show All Passwords</span>
+          </button>
+        </div>
+
+        <!-- User 1: Darvwesvaar -->
+        <div class="p-3 bg-blue-50/50 border border-blue-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span> User Slot 1
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="px-2 py-0.5 text-[10px] font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-300 rounded-md transition flex items-center gap-1 cursor-pointer" onclick="window.editUserSignature(0)">
+                <i data-lucide="signature" class="w-3 h-3"></i> Edit Signature
+              </button>
+              <span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold">User 1</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Name</label>
+              <input type="text" id="userSlotName_0" placeholder="User Name" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Email Address</label>
+              <input type="email" id="userSlotEmail_0" placeholder="user1@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Password</label>
+              <div class="relative">
+                <input type="password" id="userSlotPass_0" placeholder="••••••••" class="w-full p-1.5 pr-8 border border-slate-300 rounded-lg text-xs font-mono admin-pass-field">
+                <button type="button" class="btn-toggle-slot-pass absolute right-2 top-2 text-slate-400 hover:text-slate-600" data-target="userSlotPass_0">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Default CC</label>
+              <input type="text" id="userSlotDefaultCc_0" placeholder="e.g. boss@apmerin.com, team@apmerin.com" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- User 2: Kirthana -->
+        <div class="p-3 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">2</span> User Slot 2
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="px-2 py-0.5 text-[10px] font-semibold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 border border-indigo-300 rounded-md transition flex items-center gap-1 cursor-pointer" onclick="window.editUserSignature(1)">
+                <i data-lucide="signature" class="w-3 h-3"></i> Edit Signature
+              </button>
+              <span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-semibold">User 2</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Name</label>
+              <input type="text" id="userSlotName_1" placeholder="User Name" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Email Address</label>
+              <input type="email" id="userSlotEmail_1" placeholder="user2@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Password</label>
+              <div class="relative">
+                <input type="password" id="userSlotPass_1" placeholder="••••••••" class="w-full p-1.5 pr-8 border border-slate-300 rounded-lg text-xs font-mono admin-pass-field">
+                <button type="button" class="btn-toggle-slot-pass absolute right-2 top-2 text-slate-400 hover:text-slate-600" data-target="userSlotPass_1">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Default CC</label>
+              <input type="text" id="userSlotDefaultCc_1" placeholder="e.g. boss@apmerin.com, team@apmerin.com" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- User 3 -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded-full bg-slate-400 text-white flex items-center justify-center text-[10px]">3</span> User Slot 3
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="px-2 py-0.5 text-[10px] font-semibold text-slate-700 bg-slate-200/80 hover:bg-slate-200 border border-slate-300 rounded-md transition flex items-center gap-1 cursor-pointer" onclick="window.editUserSignature(2)">
+                <i data-lucide="signature" class="w-3 h-3"></i> Edit Signature
+              </button>
+              <span class="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-semibold">User 3</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Name</label>
+              <input type="text" id="userSlotName_2" placeholder="User 3 Name" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Email Address</label>
+              <input type="email" id="userSlotEmail_2" placeholder="user3@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Password</label>
+              <div class="relative">
+                <input type="password" id="userSlotPass_2" placeholder="••••••••" class="w-full p-1.5 pr-8 border border-slate-300 rounded-lg text-xs font-mono admin-pass-field">
+                <button type="button" class="btn-toggle-slot-pass absolute right-2 top-2 text-slate-400 hover:text-slate-600" data-target="userSlotPass_2">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Default CC</label>
+              <input type="text" id="userSlotDefaultCc_2" placeholder="e.g. boss@apmerin.com, team@apmerin.com" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- User 4 -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded-full bg-slate-400 text-white flex items-center justify-center text-[10px]">4</span> User Slot 4
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="px-2 py-0.5 text-[10px] font-semibold text-slate-700 bg-slate-200/80 hover:bg-slate-200 border border-slate-300 rounded-md transition flex items-center gap-1 cursor-pointer" onclick="window.editUserSignature(3)">
+                <i data-lucide="signature" class="w-3 h-3"></i> Edit Signature
+              </button>
+              <span class="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-semibold">User 4</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Name</label>
+              <input type="text" id="userSlotName_3" placeholder="User 4 Name" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Email Address</label>
+              <input type="email" id="userSlotEmail_3" placeholder="user4@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Password</label>
+              <div class="relative">
+                <input type="password" id="userSlotPass_3" placeholder="••••••••" class="w-full p-1.5 pr-8 border border-slate-300 rounded-lg text-xs font-mono admin-pass-field">
+                <button type="button" class="btn-toggle-slot-pass absolute right-2 top-2 text-slate-400 hover:text-slate-600" data-target="userSlotPass_3">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Default CC</label>
+              <input type="text" id="userSlotDefaultCc_3" placeholder="e.g. boss@apmerin.com, team@apmerin.com" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- User 5 -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <span class="w-4 h-4 rounded-full bg-slate-400 text-white flex items-center justify-center text-[10px]">5</span> User Slot 5
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="px-2 py-0.5 text-[10px] font-semibold text-slate-700 bg-slate-200/80 hover:bg-slate-200 border border-slate-300 rounded-md transition flex items-center gap-1 cursor-pointer" onclick="window.editUserSignature(4)">
+                <i data-lucide="signature" class="w-3 h-3"></i> Edit Signature
+              </button>
+              <span class="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-semibold">User 5</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Name</label>
+              <input type="text" id="userSlotName_4" placeholder="User 5 Name" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Email Address</label>
+              <input type="email" id="userSlotEmail_4" placeholder="user5@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Password</label>
+              <div class="relative">
+                <input type="password" id="userSlotPass_4" placeholder="••••••••" class="w-full p-1.5 pr-8 border border-slate-300 rounded-lg text-xs font-mono admin-pass-field">
+                <button type="button" class="btn-toggle-slot-pass absolute right-2 top-2 text-slate-400 hover:text-slate-600" data-target="userSlotPass_4">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Default CC</label>
+              <input type="text" id="userSlotDefaultCc_4" placeholder="e.g. boss@apmerin.com, team@apmerin.com" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- Dedicated Admin Account Settings -->
+        <div class="p-3 bg-purple-50/60 border border-purple-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-600"></i> System Administrator Account
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" class="px-2 py-0.5 text-[10px] font-semibold text-purple-700 bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-md transition flex items-center gap-1 cursor-pointer" onclick="window.editUserSignature('admin')">
+                <i data-lucide="signature" class="w-3 h-3"></i> Edit Signature
+              </button>
+              <span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-semibold">Master Admin</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Admin Name</label>
+              <input type="text" id="adminSlotName" placeholder="Administrator" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Admin Email</label>
+              <input type="email" id="adminSlotEmail" placeholder="admin@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Admin Password</label>
+              <div class="relative">
+                <input type="password" id="adminSlotPass" placeholder="••••••••" class="w-full p-1.5 pr-8 border border-slate-300 rounded-lg text-xs font-mono admin-pass-field">
+                <button type="button" class="btn-toggle-slot-pass absolute right-2 top-2 text-slate-400 hover:text-slate-600" data-target="adminSlotPass">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-600">Admin Default CC</label>
+              <input type="text" id="adminSlotDefaultCc" placeholder="e.g. project@apmerinservices.com.my" class="w-full p-1.5 border border-slate-300 rounded-lg text-xs font-mono">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button id="btnCancelSettingsModal" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button id="btnSaveSettingsApiKey" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PASTE RAW TEXT OR EMAIL -->
+  <div id="modalPasteText" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="pasteModalTitle" class="font-bold text-slate-800 text-sm">Paste Tabular Text or Email Body</h3>
+        <button id="btnClosePasteModal" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-slate-500">Paste text copied directly from Excel, Email body, or a chat window. Columns will be parsed automatically.</p>
+      <textarea id="pasteModalTextarea" rows="8" class="w-full p-3 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none" placeholder="1   2906018600   ELEMENT OVERHAUL KIT   1   PCS   48686.00..."></textarea>
+      <div class="flex justify-end gap-2">
+        <button id="btnCancelPasteModal" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button id="btnSubmitPasteModal" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">Parse Items</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SCREENSHOT PASTE TARGET SELECTOR -->
+  <div id="modalPasteTarget" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i data-lucide="image" class="w-4 h-4 text-blue-500"></i> Screenshot Detected from Clipboard
+        </h3>
+        <button id="btnClosePasteTargetModal" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-slate-500">Where would you like to parse this screenshot into?</p>
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button id="btnTargetRfq" class="p-4 border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 rounded-xl text-center transition group">
+          <i id="targetRfqIcon" data-lucide="file-spreadsheet" class="w-6 h-6 text-blue-500 mx-auto mb-2 group-hover:scale-110 transition"></i>
+          <span id="targetRfqLabel" class="block text-xs font-bold text-slate-700">1. Client RFQ</span>
+          <span id="targetRfqSub" class="block text-[10px] text-slate-400 mt-0.5">Client inquiries</span>
+        </button>
+        <button id="btnTargetQuote" class="p-4 border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 rounded-xl text-center transition group">
+          <i data-lucide="file-check" class="w-6 h-6 text-emerald-500 mx-auto mb-2 group-hover:scale-110 transition"></i>
+          <span class="block text-xs font-bold text-slate-700">2. Supplier Quote</span>
+          <span class="block text-[10px] text-slate-400 mt-0.5">Supplier price quote</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- EMAIL STUDIO MODALS                        -->
+  <!-- ========================================== -->
+
+  <!-- MODAL: EMAIL SIGNATURE EDITOR (PASTE DIRECTLY FROM OUTLOOK) -->
+  <div class="modal-overlay" id="signatureModal">
+    <div class="modal-card modal-sig">
+      <div class="modal-header">
+        <h3 id="signatureModalTitle"><i class="fa-solid fa-signature text-indigo-600"></i> Email Signature</h3>
+        <button class="close-btn" id="btnCloseSignature">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="sigActiveUserNotice" class="mb-3 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-between text-xs text-indigo-900">
+          <div>
+            <span class="font-semibold">User:</span> <span id="sigActiveUserName" class="font-bold">Darvwesvaar</span> <span id="sigActiveUserEmail" class="text-indigo-700 text-[11px]">(project@apmerinservices.com.my)</span>
+          </div>
+          <span class="text-[11px] text-indigo-600 bg-white px-2 py-0.5 rounded border border-indigo-200 font-medium">Saved per User</span>
+        </div>
+        <p class="mb-3 text-slate-600 text-xs">
+          Highlight and copy your signature in Outlook (<kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-slate-700 text-[11px]">Ctrl + C</kbd>), then click in the box below and paste (<kbd class="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-slate-700 text-[11px]">Ctrl + V</kbd>). All logos, fonts, colors, and table layouts will be preserved.
+        </p>
+
+        <!-- RICH FORMATTING TOOLBAR FOR SIGNATURE (MATCHES EMAIL AUTOMATION EDITABILITY) -->
+        <div class="sig-rich-toolbar mb-2" id="sigRichToolbar">
+          <div class="sig-tb-group">
+            <select id="sigFontFamily" class="sig-tb-select font-select" title="Font Family">
+              <option value="'Century Gothic', AppleGothic, sans-serif">Century Gothic</option>
+              <option value="'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', Arial, sans-serif" selected>Trebuchet MS</option>
+              <option value="Calibri, Candara, Segoe, 'Segoe UI', sans-serif">Calibri</option>
+              <option value="Arial, Helvetica, sans-serif">Arial</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option>
+              <option value="'Inter', sans-serif">Inter</option>
+              <option value="'Lucida Sans', 'Lucida Sans Unicode', 'Lucida Grande', sans-serif">Lucida Sans</option>
+              <option value="Tahoma, Verdana, Segoe, sans-serif">Tahoma</option>
+              <option value="'Times New Roman', Times, Baskerville, Georgia, serif">Times New Roman</option>
+              <option value="Verdana, Geneva, sans-serif">Verdana</option>
+              <option value="'Courier New', Courier, monospace">Courier New</option>
+            </select>
+            <select id="sigFontSize" class="sig-tb-select size-select" title="Font Size">
+              <option value="8px">8px</option>
+              <option value="9px">9px</option>
+              <option value="10px">10px</option>
+              <option value="11px">11px</option>
+              <option value="12px">12px</option>
+              <option value="13px" selected>13px</option>
+              <option value="13.5px">13.5px (10pt)</option>
+              <option value="14px">14px</option>
+              <option value="15px">15px</option>
+              <option value="16px">16px</option>
+              <option value="18px">18px</option>
+              <option value="20px">20px</option>
+              <option value="22px">22px</option>
+              <option value="24px">24px</option>
+              <option value="26px">26px</option>
+              <option value="28px">28px</option>
+              <option value="30px">30px</option>
+              <option value="32px">32px</option>
+              <option value="36px">36px</option>
+              <option value="40px">40px</option>
+              <option value="44px">44px</option>
+              <option value="48px">48px</option>
+              <option value="56px">56px</option>
+              <option value="64px">64px</option>
+              <option value="72px">72px</option>
+            </select>
+          </div>
+          <div class="sig-tb-separator"></div>
+          <div class="sig-tb-group">
+            <button type="button" class="sig-tb-btn" data-sig-cmd="bold" title="Bold (Ctrl+B)"><i class="fa-solid fa-bold"></i></button>
+            <button type="button" class="sig-tb-btn" data-sig-cmd="italic" title="Italic (Ctrl+I)"><i class="fa-solid fa-italic"></i></button>
+            <button type="button" class="sig-tb-btn" data-sig-cmd="underline" title="Underline (Ctrl+U)"><i class="fa-solid fa-underline"></i></button>
+            <button type="button" class="sig-tb-btn" data-sig-cmd="strikeThrough" title="Strikethrough"><i class="fa-solid fa-strikethrough"></i></button>
+          </div>
+          <div class="sig-tb-separator"></div>
+          <div class="sig-tb-group">
+            <label class="sig-color-label" title="Text Color">
+              <i class="fa-solid fa-font"></i>
+              <input type="color" id="sigTextColor" value="#000000" class="sig-color-input">
+            </label>
+            <label class="sig-color-label" title="Highlight / Background Color">
+              <i class="fa-solid fa-highlighter"></i>
+              <input type="color" id="sigBgColor" value="#ffff00" class="sig-color-input">
+            </label>
+          </div>
+          <div class="sig-tb-separator"></div>
+          <div class="sig-tb-group">
+            <button type="button" class="sig-tb-btn" data-sig-cmd="justifyLeft" title="Align Left"><i class="fa-solid fa-align-left"></i></button>
+            <button type="button" class="sig-tb-btn" data-sig-cmd="justifyCenter" title="Align Center"><i class="fa-solid fa-align-center"></i></button>
+            <button type="button" class="sig-tb-btn" data-sig-cmd="justifyRight" title="Align Right"><i class="fa-solid fa-align-right"></i></button>
+          </div>
+          <div class="sig-tb-separator"></div>
+          <div class="sig-tb-group">
+            <button type="button" class="sig-tb-btn" data-sig-cmd="insertUnorderedList" title="Bullet List"><i class="fa-solid fa-list-ul"></i></button>
+            <button type="button" class="sig-tb-btn" data-sig-cmd="insertOrderedList" title="Numbered List"><i class="fa-solid fa-list-ol"></i></button>
+            <button type="button" class="sig-tb-btn" id="btnSigLink" title="Insert / Edit Link"><i class="fa-solid fa-link"></i></button>
+            <button type="button" class="sig-tb-btn" id="btnSigInsertImg" title="Insert / Upload Image"><i class="fa-regular fa-image"></i></button>
+            <input type="file" id="sigImageFileInput" accept="image/*" style="display:none;">
+            <button type="button" class="sig-tb-btn" id="btnSigClearFormat" title="Clear Formatting"><i class="fa-solid fa-remove-format"></i></button>
+          </div>
+          <div class="sig-tb-separator"></div>
+          <div class="sig-tb-group ml-auto">
+            <button type="button" class="sig-tb-btn sig-tb-btn-text" id="btnSigToggleHtml" title="Toggle HTML Source Code View">
+              <i class="fa-solid fa-code"></i> <span>HTML</span>
+            </button>
+            <button type="button" id="btnPasteClipboardSig" class="sig-tb-btn sig-tb-btn-text text-indigo-600 hover:bg-indigo-50" title="Paste signature from clipboard">
+              <i class="fa-regular fa-clipboard"></i> <span>Paste</span>
+            </button>
+            <button type="button" id="btnClearSigEditor" class="sig-tb-btn sig-tb-btn-text text-rose-600 hover:bg-rose-50" title="Clear signature content">
+              <i class="fa-regular fa-trash-can"></i> <span>Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sig-visual-editor-container">
+          <div id="sigVisualEditor" class="sig-visual-editor" contenteditable="true" spellcheck="false"
+               data-placeholder="Click here and press Ctrl + V to paste your signature from Outlook..."></div>
+          <textarea id="sigHtmlSource" class="sig-html-source" style="display:none;" spellcheck="false" placeholder="Enter or edit raw HTML signature code here..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnResetDefaultSignature" type="button" class="btn btn-outline btn-sm text-slate-600 mr-auto">
+          <i class="fa-solid fa-rotate-left"></i> Reset Official AP Merin Signature
+        </button>
+        <span class="text-[11px] text-slate-400 hidden sm:inline mr-2"><kbd class="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-mono border border-slate-300">Ctrl + S</kbd> to save</span>
+        <button id="btnSaveSignature" type="button" class="btn btn-primary mr-6">
+          <i class="fa-solid fa-floppy-disk"></i> Save Signature
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EMAIL ACCOUNT SETTINGS -->
+  <div class="modal-overlay" id="emailSettingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sliders text-indigo-600"></i> Email Dispatch Settings</h3>
+        <button class="close-btn" id="btnCloseEmailSettings">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Preset Buttons -->
+        <div class="preset-selector">
+          <label class="field-label">Quick Provider Presets:</label>
+          <div class="preset-btn-group">
+            <button type="button" class="btn btn-sm btn-preset active" data-preset="apmerin">
+              <i class="fa-solid fa-anchor text-blue-600"></i> AP Merin (MSCHOSTING)
+            </button>
+            <button type="button" class="btn btn-sm btn-preset" data-preset="office365">
+              <i class="fa-brands fa-microsoft text-blue-500"></i> Office 365
+            </button>
+            <button type="button" class="btn btn-sm btn-preset" data-preset="gmail">
+              <i class="fa-brands fa-google text-rose-500"></i> Gmail
+            </button>
+          </div>
+        </div>
+
+        <hr class="modal-divider">
+
+        <form id="emailSettingsForm" onsubmit="return false;">
+          <div class="form-group">
+            <label class="field-label">Sender Display Name:</label>
+            <input type="text" id="cfgSenderName" class="form-control" placeholder="e.g. AP Merin Services">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="field-label">Sender Email Address (Username):</label>
+              <input type="email" id="cfgUsername" class="form-control" placeholder="e.g. yourname@apmerinservices.com.my" required>
+            </div>
+            
+            <div class="form-group flex-1">
+              <label class="field-label">Password or App Password:</label>
+              <input type="password" id="cfgPassword" class="form-control" placeholder="••••••••••••" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label class="field-label">SMTP Server Host:</label>
+              <input type="text" id="cfgSmtpHost" class="form-control" value="smtppro47.mschosting.network" required>
+            </div>
+
+            <div class="form-group flex-1">
+              <label class="field-label">Port:</label>
+              <input type="number" id="cfgSmtpPort" class="form-control" value="465" required>
+            </div>
+
+            <div class="form-group flex-1">
+              <label class="field-label">Security:</label>
+              <select id="cfgSecurityMode" class="form-control">
+                <option value="ssl" selected>SSL (465)</option>
+                <option value="tls">TLS (587)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="field-label">Default CC (Colleagues):</label>
+            <input type="text" id="cfgDefaultCc" class="form-control" placeholder="project@apmerinservices.com.my">
+            <small class="field-help">Pre-fills the CC bar every time you launch the studio.</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="field-label">Delay Between Dispatches (seconds):</label>
+              <input type="number" step="0.5" id="cfgDelaySeconds" class="form-control" value="1.5" min="0" max="30">
+            </div>
+          </div>
+
+          <div id="connectionStatusAlert" class="status-alert hidden"></div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnTestConnection" type="button" class="btn btn-outline">
+          <i class="fa-solid fa-plug"></i> Test Connection
+        </button>
+        <button id="btnSaveEmailSettings" type="button" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REAL-TIME SENDING PROGRESS -->
+  <div class="modal-overlay" id="emailProgressModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 id="emailProgressModalTitle"><i class="fa-solid fa-paper-plane fa-spin text-indigo-600"></i> Dispatching Emails...</h3>
+        <button class="close-btn" id="btnCloseProgress" style="display:none;">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Progress Bar -->
+        <div class="progress-bar-wrapper">
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="progressPercentage">0%</span>
+            <span id="progressCounts">0 of 0 processed</span>
+          </div>
+        </div>
+
+        <!-- Summary Stats Cards -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-num text-primary" id="statTotal">0</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num text-success" id="statSent">0</span>
+            <span class="stat-label">Sent</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num text-danger" id="statFailed">0</span>
+            <span class="stat-label">Failed</span>
+          </div>
+        </div>
+
+        <!-- Live Activity Log -->
+        <h4 class="log-title">Live Dispatch Log</h4>
+        <div class="log-table-container">
+          <table class="log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Recipient / Company</th>
+                <th>Status</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="progressLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnCancelBatch" type="button" class="btn btn-danger">
+          <i class="fa-solid fa-ban"></i> Stop Sending
+        </button>
+        <button id="btnFinishProgress" type="button" class="btn btn-primary" style="display:none;">
+          <i class="fa-solid fa-check"></i> Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TEST EMAIL PROMPT -->
+  <div class="modal-overlay" id="testEmailModal">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-vial text-indigo-600"></i> Send Test Email</h3>
+        <button class="close-btn" id="btnCloseTestEmail">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 text-muted text-xs">Enter your email address to receive 1 test copy of this message with all images, CC, and signature intact.</p>
+        <div class="form-group">
+          <label class="field-label">Test Recipient Email:</label>
+          <input type="email" id="inputTestEmail" class="form-control" placeholder="project@apmerinservices.com.my">
+        </div>
+        <div class="form-group mt-3" id="testCcToggleGroup">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chkTestIncludeCc">
+            <span class="checkmark"></span>
+            <span class="checkbox-label" style="font-size: 0.83rem;">Also copy CC colleagues on this test</span>
+          </label>
+          <small class="field-help" id="testCcHelperText">Leave unchecked to send test ONLY to yourself.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnConfirmSendTest" type="button" class="btn btn-primary">
+          <i class="fa-solid fa-paper-plane"></i> Send Test Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING AUTOCOMPLETE DROPDOWN -->
+  <div id="emailAutocompleteDropdown" class="autocomplete-suggestions-dropdown"></div>
+
+  <!-- MODAL: ADDRESS BOOK & CONTACT MANAGEMENT -->
+  <div class="modal-overlay" id="addressBookModal">
+    <div class="modal-card modal-lg" style="max-width: 820px; width: 95%;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-address-book text-primary"></i> Address Book & Contact Management</h3>
+        <button class="close-btn" id="btnCloseAddressBook">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <!-- Top Toolbar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div style="flex: 1; min-width: 220px; position: relative;">
+            <i class="fa-solid fa-search" style="position: absolute; left: 12px; top: 11px; color: var(--text-muted);"></i>
+            <input type="text" id="inputAddressBookSearch" class="form-control" style="padding-left: 36px; height: 38px;" placeholder="Search contacts by name, email, or company...">
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnAddNewContactToggle" type="button" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-user-plus"></i> Add Contact
+            </button>
+            <button id="btnTriggerImportContacts" type="button" class="btn btn-sm btn-secondary">
+              <i class="fa-solid fa-file-import"></i> Import (CSV/Excel)
+            </button>
+            <input type="file" id="inputContactFileImport" accept=".csv,.xlsx,.xls" hidden>
+            <button id="btnExportContacts" type="button" class="btn btn-sm btn-secondary">
+              <i class="fa-solid fa-file-export"></i> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Add / Edit Contact Form (Collapsible) -->
+        <div id="contactFormWrapper" class="card" style="padding: 16px; margin-bottom: 16px; background: #f8fafc; border: 1px solid #cbd5e1; display: none;">
+          <h4 id="contactFormTitle" style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #1e293b;">Add New Contact</h4>
+          <input type="hidden" id="contactFormId">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label class="field-label" style="font-size: 11px;">Name:</label>
+              <input type="text" id="contactFormName" class="form-control" style="height: 34px;" placeholder="e.g. John Doe">
+            </div>
+            <div>
+              <label class="field-label" style="font-size: 11px;">Email Address *:</label>
+              <input type="email" id="contactFormEmail" class="form-control" style="height: 34px;" placeholder="e.g. buyer@company.com">
+            </div>
+            <div>
+              <label class="field-label" style="font-size: 11px;">Company / Supplier:</label>
+              <input type="text" id="contactFormCompany" class="form-control" style="height: 34px;" placeholder="e.g. Shunkong Marine">
+            </div>
+            <div>
+              <label class="field-label" style="font-size: 11px;">Notes / Role:</label>
+              <input type="text" id="contactFormNotes" class="form-control" style="height: 34px;" placeholder="e.g. Diesel Engine Parts">
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button id="btnCancelContactForm" type="button" class="btn btn-sm btn-secondary">Cancel</button>
+            <button id="btnSaveContactForm" type="button" class="btn btn-sm btn-primary">Save Contact</button>
+          </div>
+        </div>
+
+        <!-- Contacts Table -->
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; max-height: 380px; overflow-y: auto;">
+          <table class="table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 1;">
+              <tr>
+                <th style="padding: 10px 14px; text-align: left;">Name</th>
+                <th style="padding: 10px 14px; text-align: left;">Email</th>
+                <th style="padding: 10px 14px; text-align: left;">Company</th>
+                <th style="padding: 10px 14px; text-align: center;">Frequency</th>
+                <th style="padding: 10px 14px; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="addressBookTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCloseAddressBookBottom">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BIZTORY COPY & PASTE GUIDE & WORKAROUNDS -->
+  <div id="modalBiztoryGuide" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50/50">
+        <div class="flex items-center gap-2.5">
+          <span class="p-2 bg-indigo-600 text-white rounded-xl shadow-xs">
+            <i data-lucide="book-open" class="w-5 h-5"></i>
+          </span>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Biztory Copy & Paste Guide</h3>
+            <p class="text-[11px] text-slate-500">Why multi-line descriptions split rows in Biztory & the solutions</p>
+          </div>
+        </div>
+        <button id="btnCloseBiztoryGuide" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto text-xs text-slate-600 leading-relaxed">
+        
+        <!-- Explanation of Problem -->
+        <div class="p-3.5 bg-amber-50 rounded-xl border border-amber-200/80">
+          <h4 class="font-bold text-amber-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600"></i> Why Do Items Break Into Multiple Rows in Biztory?
+          </h4>
+          <p class="text-[11.5px] text-amber-800">
+            When you copy a table from Excel or web apps and paste into Biztory's invoice/quote grid, Biztory uses a simple script that treats <strong>every single Enter / Newline (<code class="font-mono bg-amber-100 px-1 rounded">\n</code>)</strong> as the start of a <strong>brand new item row</strong>. Even if the text is wrapped in quotes, Biztory ignores them and splits your remarks (<code class="font-mono bg-amber-100 px-1 rounded">#OFFER</code>, maker name, specs) into separate phantom lines, corrupting prices and quantities.
+          </p>
+        </div>
+
+        <!-- Solution 1: Single Line Mode -->
+        <div class="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
+          <h4 class="font-bold text-emerald-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i> Solution 1: Use "Biztory (Single-Line //)" (Recommended)
+          </h4>
+          <p class="text-[11.5px] text-emerald-800 mb-2">
+            Select <strong>Biztory (Single-Line //)</strong> in the Format dropdown before clicking <em>Copy for Cloud Accounting</em>. This automatically converts all newlines inside descriptions into clean inline separators (<code class="font-mono bg-emerald-100 px-1 rounded"> // </code>):
+          </p>
+          <div class="bg-white p-2.5 rounded-lg border border-emerald-200 font-mono text-[10.5px] text-emerald-950 space-y-1 select-all">
+            LED T8 Tube Light 2FT/20W // #OFFER: 2FT/ 20W /6500K WHITE<br>
+            DEWALT DW810B // #OFFER: Rated power: 710W | No-load speed: 12000 rpm
+          </div>
+          <p class="text-[11px] text-emerald-700 mt-2">
+            ✓ <strong>100% Guaranteed:</strong> Each item pastes as exactly 1 row into Biztory. Qty, Unit, and Price never shift!
+          </p>
+        </div>
+
+        <!-- Solution 2: Unicode Soft Line Break -->
+        <div class="p-3.5 bg-indigo-50 rounded-xl border border-indigo-200">
+          <h4 class="font-bold text-indigo-900 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="sparkles" class="w-4 h-4 text-indigo-600"></i> Solution 2: Use "Biztory (Soft Line Break)"
+          </h4>
+          <p class="text-[11.5px] text-indigo-800">
+            Replaces standard newlines with Unicode line breaks (<code class="font-mono bg-indigo-100 px-1 rounded">\u2028</code>). In browser text inputs, this visually breaks onto multiple lines without triggering Biztory's row-splitting code!
+          </p>
+        </div>
+
+        <!-- Solution 3: Row Copy Description -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1 text-xs">
+            <i data-lucide="copy" class="w-4 h-4 text-blue-600"></i> Solution 3: 1-Click "Copy Desc" on Individual Rows
+          </h4>
+          <p class="text-[11.5px] text-slate-600 mb-1">
+            Need an individual item in Biztory to have the exact multi-line bullet points (like technical specs)?
+          </p>
+          <p class="text-[11.5px] text-slate-600">
+            Click the small <code class="font-mono bg-slate-200 text-slate-800 px-1 rounded font-bold">📋 Copy Desc</code> button directly under that item's description in our table. Then click into Biztory's description box and press <code class="font-mono bg-slate-200 text-slate-800 px-1 rounded font-bold">Ctrl + V</code>!
+          </p>
+        </div>
+
+        <!-- Tip: Shift+Enter in Biztory -->
+        <div class="p-3 bg-blue-50/70 rounded-xl border border-blue-100 flex items-start gap-2.5">
+          <i data-lucide="info" class="w-4 h-4 text-blue-600 shrink-0 mt-0.5"></i>
+          <p class="text-[11px] text-blue-800">
+            <strong>Pro-Tip inside Biztory:</strong> When manually typing into Biztory's description field, press <strong>Shift + Enter</strong> or <strong>Alt + Enter</strong> to create a new line without submitting the line item.
+          </p>
+        </div>
+
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <button id="btnCloseBiztoryGuideBottom" type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-sm transition">
+          Got It, Thanks!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUICK REMARKS & SPECS TEMPLATE EDITOR -->
+  <div id="modalEditRemarks" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="edit-3" class="w-4 h-4"></i></span>
+          <div>
+            <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Item Remarks & Specifications</h3>
+            <p id="editRemarksItemTitle" class="text-[11px] text-slate-500 font-medium truncate max-w-xs">Item #1</p>
+          </div>
+        </div>
+        <button id="btnCloseEditRemarks" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-3.5">
+        <!-- Quick Preset Badges -->
+        <div>
+          <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Quick Insert Templates:</label>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" class="btn-preset-remark text-[11px] px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold rounded-lg transition cursor-pointer" data-template="#OFFER\n">
+              + #OFFER
+            </button>
+            <button type="button" class="btn-preset-remark text-[11px] px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-semibold rounded-lg transition cursor-pointer" data-template="Maker: \nModel: ">
+              + Maker / Model
+            </button>
+            <button type="button" class="btn-preset-remark text-[11px] px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-semibold rounded-lg transition cursor-pointer" data-template="Rated power: \nNo-load speed: \nSpindle size: \nDimensions: \nWeight: ">
+              + Technical Specs
+            </button>
+            <button type="button" class="btn-preset-remark text-[11px] px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition cursor-pointer" data-template="Lead Time: Ex-Stock\nWarranty: 12 Months">
+              + Delivery/Warranty
+            </button>
+          </div>
+        </div>
+
+        <!-- Remarks Textarea -->
+        <div>
+          <label class="text-[11px] font-bold text-slate-600 block mb-1">Extra Remarks / Technical Description:</label>
+          <textarea id="editRemarksTextarea" rows="6" class="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 focus:border-blue-500 rounded-xl p-3 text-xs text-slate-800 outline-none font-sans font-medium transition resize-y leading-relaxed" placeholder="Type extra remarks, #OFFER details, or technical specs here..."></textarea>
+          <p class="text-[10.5px] text-slate-400 mt-1">These extra remarks will be appended beneath the item title when remarks are enabled.</p>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <button id="btnRemoveAllRemarks" type="button" class="text-xs text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer">
+          Clear Remarks
+        </button>
+        <div class="flex items-center gap-2">
+          <button id="btnCancelEditRemarks" type="button" class="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-xl transition">
+            Cancel
+          </button>
+          <button id="btnSaveEditRemarks" type="button" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition">
+            Apply Remarks
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition duration-300 z-50 text-xs font-medium pointer-events-none">
+    <i id="toastIcon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMessage">Copied to clipboard!</span>
+  </div>
+
+  <!-- Application Logic Scripts -->
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <script src="static/default_signature.js"></script>
+  <script src="static/email_studio.js"></script>
+  <script src="static/gemini_engine.js"></script>
+  <script src="static/matcher.js"></script>
+  <script src="static/preview_engine.js"></script>
+  <script src="static/app.js"></script>
+  <script src="static/shared_bridge.js"></script>
+</body>
+</html>
