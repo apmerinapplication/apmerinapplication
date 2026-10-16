@@ -54,6 +54,9 @@ def verify():
                 name,value=line.split('=',1)
                 if any(token in name for token in ['KEY','SECRET','PASSWORD','DATABASE_URL']):assert not value.strip(),'Nonblank secret example'
         assert z.read('pyproject.toml').decode().find('entrypoint = "main:app"')>=0
+        config=json.loads(z.read('vercel.json'))
+        for options in config.get('functions',{}).values():
+            assert isinstance(options.get('excludeFiles',''),str) and len(options.get('excludeFiles',''))<=256,'Vercel excludeFiles exceeds its 256-character limit'
         assert 'desktop_app.py' not in manifest
     print('PASS: web ZIP integrity, exact allowlist, manifest, server-only Gemini, blank secrets; no company records or desktop files.')
 
