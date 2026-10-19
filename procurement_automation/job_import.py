@@ -234,7 +234,8 @@ def assemble(store,flow,ref,actor,owner=None):
             c.execute('UPDATE messages SET job_id=? WHERE id=?',(jid,row['id']))
             data=json.loads(row['data'])
             # Classification is a proposed task, not a confirmed commercial transition.
-            if data.get('direction')=='received' and data.get('event')=='supplier_quote':
+            from .ingestion import classify
+            if data.get('direction')=='received' and data.get('event')=='supplier_quote' and data.get('sender','').lower()!=payload.get('client_email','').lower() and classify(data)!='rfq':
                 store.add_record(c,jid,'supplier_quote',dict(supplier_email=data['sender'],evidence='email:'+row['id'],subject=data['subject'],review_required=True),'import worker')
             if data.get('direction')=='sent' and re.match(r'^rfq\b',data['subject'],re.I):
                 try:sent_date=parsedate_to_datetime(data['date']).astimezone(ZoneInfo('Asia/Kuala_Lumpur')).date().isoformat()

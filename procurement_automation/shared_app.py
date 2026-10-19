@@ -407,6 +407,8 @@ def create_app(directory=None, testing=False):
             messages=[]
             for r in c.execute(f"SELECT id,status,created_at,job_id,{review_sql} AS data FROM messages WHERE status IN ('review','ai_pending') ORDER BY created_at"):
                 data=json.loads(r['data']);data['rfq_suggestion']=facts(data)
+                from .ingestion import classify
+                if classify(data)=='rfq' and data.get('event')=='supplier_quote':data['event']='rfq'
                 messages.append(dict(id=r['id'],status=r['status'],created_at=r['created_at'],**data,job_id=r['job_id']))
             from .rfq_alerts import group_alerts
             alerts=group_alerts(store,c,messages)

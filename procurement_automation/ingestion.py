@@ -45,6 +45,9 @@ def parse_message(raw):
 
 def classify(data):
     text=(data['subject']+'\n'+data['body']).lower()
+    # A new client invitation can mention quotations, shipping and technical details.
+    # Replies still follow the event checks below.
+    if re.match(r'^\s*request for quot(?:e|ation)\b',data['subject'],re.I):return 'rfq'
     if re.search(r'\b(?:please|kindly|could you|can you)\b.{0,100}\b(?:vessel|datasheet|data sheet|serial|confirm|clarif|details|drawing)',text,re.S):return 'clarification'
     if re.search(r'\b(?:airway bill|awb|bill of lading|delivery order|tracking number)\b',text):return 'shipping_evidence'
     if re.search(r'\b(?:purchase order|po attached|order confirmation)\b',text):return 'order_evidence'
@@ -78,6 +81,7 @@ def known_party(store,c,job,data):
 
 def apply_event(store,flow,c,jid,mid,data,event,actor):
     job=store.job(c,jid)
+    if event=='supplier_quote' and data.get('sender','').lower()==job.get('client_email','').lower() and classify(data)=='rfq':event='rfq'
     evidence='email:'+mid
     if event=='clarification':
         flow.record(c,jid,'clarification',dict(version=job['version'],question=data['body'] or data['subject'],supplier_email=data['sender'],evidence=evidence),actor)

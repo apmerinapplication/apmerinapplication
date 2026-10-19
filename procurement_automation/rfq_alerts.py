@@ -31,8 +31,9 @@ def group_alerts(store,c,messages,at=None):
     for m in messages:
         m['new_rfq']=False
         if m.get('job_id') or m.get('candidates') or m.get('direction')!='received' or m.get('live_monitor') is not True:continue
-        sender=m.get('sender','')
-        if sender.endswith('@apmerinservices.com.my') or sender in suppliers or sender.split('@')[-1] in supplier_domains-client_domains:continue
+        sender=m.get('sender','').lower()
+        # An inferred supplier record must never suppress a known client's other RFQs.
+        if sender.endswith('@apmerinservices.com.my') or sender in suppliers-clients or sender.split('@')[-1] in supplier_domains-client_domains:continue
         try:
             date=parsedate_to_datetime(m['date']) if m.get('date') else datetime.fromisoformat(m['created_at'])
             if date.tzinfo is None:date=date.replace(tzinfo=timezone.utc)
