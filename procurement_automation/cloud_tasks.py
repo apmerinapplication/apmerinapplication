@@ -138,6 +138,10 @@ def mail_step(store):
     if not progress:begin(store);progress=dict(mailbox=0,folder=0)
     if not configs:
         state(store,'mailbox:configuration',dict(status='error',processed=0));finish(store);return False
+    # An earlier setup failure must not poison successful checks after credentials
+    # are added. Individual mailbox failures remain visible and still fail finish().
+    if state(store,'mailbox:configuration').get('status')=='error':
+        state(store,'mailbox:configuration',dict(status='ok',processed=0))
     cfg=configs[progress['mailbox']];folders=cfg.get('folders',['INBOX','Sent'])
     # Monitoring uses explicit Inbox/Sent folders; '*' is for historical import only.
     if folders==['*']:folders=cfg.get('monitor_folders',['INBOX','Sent'])

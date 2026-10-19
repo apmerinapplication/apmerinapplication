@@ -18,7 +18,7 @@
   "procurement_automation/backup.py": "239ed48d4740896fcc352536094193a8384d2fec4999bbc3b917b8a90d372b64",
   "procurement_automation/blobs.py": "ab130496c2823fc2b26410098dfc319da3b647c1f8b2e871b2c538ac9a4d2ae9",
   "procurement_automation/cloud_config.py": "f2e384b0a9feca9ae9375ca0bdc47f57175160842cb068af0842a3a2196d8149",
-  "procurement_automation/cloud_tasks.py": "d074a9344b8f63589be0e91f67c5ccf2fd7962d08c84f6d51bd8896965fdb7ce",
+  "procurement_automation/cloud_tasks.py": "2ca9d02815d4d99db5ce3ce8b95b005a5f16de43760793119e4b85d9903dfa70",
   "procurement_automation/dashboard_details.py": "fcbe87f9ae3b738a95ce3ed414b571030de8e55640f4c66231b1911b8325fe31",
   "procurement_automation/document_facts.py": "91bd7141d86a2934980124cd903250a3d808a4d1043b80b2e4696cef457dadfd",
   "procurement_automation/import_facts.py": "9b2e3536c62f5a2cd6cf68a89a31247c7bf032bef4d8d03b4603edf044b11b9e",
