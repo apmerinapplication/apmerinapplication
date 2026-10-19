@@ -1,10 +1,12 @@
 """Identify supplier payment advice without treating submitted transfers as settled."""
 import json,re
 
-def candidates(store,c,jid):
+def candidates(store,c,jid,messages=None):
     found=[];seen=set();job=store.job(c,jid)
-    for row in c.execute('SELECT id,data FROM messages WHERE job_id=?',(jid,)):
-        data=json.loads(row['data'])
+    if messages is None:
+        projection="(data::jsonb - 'body_html' - 'identity_body')::text" if store.is_cloud else 'data'
+        messages=[dict(json.loads(row['data']),id=row['id']) for row in c.execute(f'SELECT id,{projection} AS data FROM messages WHERE job_id=?',(jid,))]
+    for data in messages:
         if not re.search(r'cross[ -]+border[ -]+payment|payment[ -]+debit[ -]+advi[cs]e',data.get('subject',''),re.I):continue
         if not data.get('sender','').lower().endswith('@apmerinservices.com.my'):continue
         for ext in data.get('extractions',[]):
@@ -20,5 +22,5 @@ def candidates(store,c,jid):
             if not amount:amount=re.search(r'\bAmount\s*\n\s*(?:MYR|SGD|USD|EUR)?\s*([\d,]+\.\d{2})',text,re.I)
             currency=re.search(r'Currency\s*:\s*([A-Z]{3})',text,re.I)
             ref=re.search(r'(?:AOB Reference No|Reference No\.?)[ \t]*[:\n]\s*([A-Z0-9-]{6,})',text,re.I)
-            found.append(dict(message_id=row['id'],document_hash=ext['hash'],filename=attachment['filename'],date=data.get('date',''),subject=data.get('subject',''),status='Advice submitted · settlement needs confirmation' if pending else 'Payment advice found · verify settlement',amount=amount[1].replace(',','') if amount else '',currency=currency[1].upper() if currency else '',reference=ref[1] if ref else ''))
+            found.append(dict(message_id=data['id'],document_hash=ext['hash'],filename=attachment['filename'],date=data.get('date',''),subject=data.get('subject',''),status='Advice submitted · settlement needs confirmation' if pending else 'Payment advice found · verify settlement',amount=amount[1].replace(',','') if amount else '',currency=currency[1].upper() if currency else '',reference=ref[1] if ref else ''))
     return found

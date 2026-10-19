@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from .store import now
 from .workflow import number,day
 
-def summary(store,flow,c,job):
+def summary(store,flow,c,job,messages=None):
     ordered=flow.ordered(c,job);verified=any(ordered.values());received,_=flow.quantities(c,job)
     lines=[dict(id=i['id'],description=i['description'],part_no=i.get('part_no',''),ordered=str(ordered[i['id']] if verified else number(i['quantity'])),received=str(received[i['id']]),remaining=str((ordered[i['id']] if verified else number(i['quantity']))-received[i['id']])) for i in job['items']]
     payments=store.records(c,job['id'],'manual_payment_confirmation');states={}
@@ -15,7 +15,7 @@ def summary(store,flow,c,job):
             if r['party']==party:last[r['document_reference']]=r
         states[party]=dict(status='Paid · staff confirmed' if last and all(r['status']=='paid' for r in last.values()) else 'Partial payment · staff recorded' if last else 'Not confirmed',records=list(last.values()))
     from .payment_evidence import candidates
-    states['supplier']['evidence_candidates']=candidates(store,c,job['id'])
+    states['supplier']['evidence_candidates']=candidates(store,c,job['id'],messages)
     if not states['supplier']['records'] and states['supplier']['evidence_candidates']:states['supplier']['status']='Payment advice found · confirm settlement'
     invoices=store.records(c,job['id'],'invoice')
     if invoices:

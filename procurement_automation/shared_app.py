@@ -8,7 +8,7 @@ from functools import wraps
 from pathlib import Path
 from flask import Flask, jsonify, request, session, render_template, Response, send_file, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
-from .store import Store, now
+from .store import Store, now, DashboardReadView
 from .workflow import Workflow, DEFAULT_POLICY
 
 def message_metadata(data,review=False):
@@ -179,15 +179,19 @@ def create_app(directory=None, testing=False):
     @app.get('/api/jobs')
     def jobs():
         with store.connection() as c:
+            c=DashboardReadView(c)
+            message_rows={jid:[] for jid in c.job_rows}
+            for r in c.execute(f'SELECT id,job_id,{metadata_sql} AS data FROM messages WHERE job_id IS NOT NULL'):
+                message_rows.setdefault(r['job_id'],[]).append(dict(id=r['id'],**json.loads(r['data'])))
             result=[]
             for row in c.execute('SELECT id FROM jobs ORDER BY updated_at DESC'):
                 j=store.job(c,row[0]);j['finance']=flow.finance(c,j)
                 from .workflow import effective_owner
                 from .dashboard_details import details
-                messages=[dict(id=r['id'],**json.loads(r['data'])) for r in c.execute(f'SELECT id,{metadata_sql} AS data FROM messages WHERE job_id=?',(j['id'],))]
+                messages=message_rows.get(j['id'],[])
                 j['client_po_references']=details(store,c,j,store.records(c,j['id']),messages,references_only=True)['client_po_references']
                 from .staff_confirmation import summary as staff_summary
-                j['staff_status']=staff_summary(store,flow,c,j);j['effective_owner']=effective_owner(j);result.append(j)
+                j['staff_status']=staff_summary(store,flow,c,j,messages);j['effective_owner']=effective_owner(j);result.append(j)
         return jsonify(jobs=result)
 
     @app.post('/api/jobs')
@@ -345,7 +349,7 @@ def create_app(directory=None, testing=False):
 
     @app.get('/api/reminders')
     def reminders():
-        with store.connection() as c:return jsonify(reminders=flow.reminders(c,user()))
+        with store.connection() as c:return jsonify(reminders=flow.reminders(DashboardReadView(c),user()))
 
     @app.post('/api/jobs/<jid>/review-tasks/<rid>/resolve')
     def resolve_review_task(jid,rid):

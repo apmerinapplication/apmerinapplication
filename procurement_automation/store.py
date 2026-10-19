@@ -11,6 +11,21 @@ from pathlib import Path
 def now():
     return datetime.now(timezone.utc).isoformat()
 
+
+class DashboardReadView:
+    """Request-local rows for read-only dashboards; never persisted or reused."""
+    def __init__(self, connection):
+        self.connection=connection
+        self.job_rows={r['id']:dict(r) for r in connection.execute('SELECT * FROM jobs')}
+        self.record_rows={jid:[] for jid in self.job_rows}
+        for row in connection.execute('SELECT * FROM records ORDER BY created_at'):
+            self.record_rows.setdefault(row['job_id'],[]).append(dict(row))
+
+    def execute(self,query,args=()):
+        if not query.lstrip().upper().startswith('SELECT '):
+            raise RuntimeError('Dashboard read view cannot modify records')
+        return self.connection.execute(query,args)
+
 class Store:
     def __init__(self, directory=None):
         self.database_url = os.environ.get('APMERIN_DATABASE_URL', '') if directory is None else ''
@@ -100,12 +115,14 @@ class Store:
         c.execute('INSERT INTO events VALUES (?,?,?,?,?,?)',(uuid.uuid4().hex,job_id,actor,kind,json.dumps(data),now()))
 
     def job(self, c, job_id):
-        r = c.execute('SELECT * FROM jobs WHERE id=?',(job_id,)).fetchone()
+        r = c.job_rows.get(job_id) if isinstance(c,DashboardReadView) else c.execute('SELECT * FROM jobs WHERE id=?',(job_id,)).fetchone()
         if not r:
             raise LookupError('Job not found')
         return dict(json.loads(r['data']),id=r['id'],version=r['version'],created_at=r['created_at'],updated_at=r['updated_at'])
 
     def records(self,c,job_id,kind=None):
+        if isinstance(c,DashboardReadView):
+            return [dict(json.loads(r['data']),id=r['id'],kind=r['kind'],created_at=r['created_at']) for r in c.record_rows.get(job_id,[]) if kind is None or r['kind']==kind]
         query = 'SELECT * FROM records WHERE job_id=?'
         args = [job_id]
         if kind:
