@@ -4,7 +4,7 @@ Deploy the contents of **AP_Merin_Web_Vercel.zip** as one Vercel Flask project. 
 
 ## Architecture
 
-- Vercel serves the dashboard and authenticated Python APIs at `/workflow/`, plus the existing quotation worksheet at `/quotation`. `pyproject.toml` explicitly selects `main:app`; the legacy standalone `app.py` is not the deployment entrypoint.
+- Vercel serves only the procurement dashboard and authenticated Python APIs at `/workflow/`. The existing quotation application remains separate and is not mounted in this deployment. `pyproject.toml` explicitly selects `main:app`; the legacy standalone `app.py` is not the deployment entrypoint.
 - Supabase Postgres holds jobs, accounts, role assignments, hashed passwords, reminders, events, import cursors, extraction caches and AI usage. Use the **transaction pooler** URI with its URL-encoded password, not the Supabase project URL. Prepared statements are disabled for pooler compatibility.
 - Private Supabase Storage holds original emails and attachments. Only the server has its service key. Authenticated download requests obtain object-specific links valid for 60 seconds. There is no anonymous bucket policy.
 - Gemini runs on the server, with bounded requests, cached results and a shared estimated US$10 monthly application allowance. This is not a Google billing limit. Keys are never returned to browsers.

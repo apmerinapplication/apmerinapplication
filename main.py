@@ -6,8 +6,8 @@ from flask import Flask
 from procurement_automation.cloud_config import validate_cloud_environment
 
 
-# Vercel discovers this Flask instance. The existing authenticated quotation tools
-# remain available, and / redirects to the shared dashboard at /workflow/.
+# Vercel discovers this procurement-only Flask instance.
+# The root redirects to the shared dashboard at /workflow/.
 app=Flask('apmerin_web',static_folder=None)
 try:
     validate_cloud_environment()
