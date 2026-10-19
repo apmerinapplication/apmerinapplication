@@ -14,4 +14,7 @@ body:has(dialog[open]){overflow:hidden}@media(min-width:721px){.workspace-nav{ma
 /* Navigation stays in one column; only the page scrolls on short screens. */
 .workspace-nav{flex-direction:column;flex-wrap:nowrap;overflow:visible;max-height:none}
 .workspace-nav button{width:100%;min-width:0;flex-shrink:0;white-space:normal}
-@media(min-width:721px) and (max-height:800px){body{min-height:800px}body>header{position:absolute;bottom:auto;min-height:800px}.workspace-nav{position:absolute}}
+/* Keep the sidebar anchored to the viewport, including shorter laptop screens. */
+@media(min-width:721px) and (max-height:800px){body>header{padding:20px 18px;gap:12px}body>header .brand{gap:10px}body>header .brand-logo{width:56px;height:56px}body>header .brand strong{font-size:13px}body>header .brand small{font-size:10px;margin-top:3px}body>header .brand-motto{display:none}.workspace-nav{top:190px;gap:4px;padding:4px 0}.workspace-nav button{min-height:36px;padding:8px 12px}.workspace-nav #refresh{margin-top:8px;padding-top:12px}#identity{padding-top:12px}#logout{min-height:36px;padding:8px 12px}}
+@media(min-width:721px) and (max-height:620px){body>header{padding:16px 18px;gap:8px}body>header .brand-logo{width:40px;height:40px}body>header .brand small{display:none}.workspace-nav{top:128px;gap:2px}.workspace-nav button{min-height:30px;padding:6px 12px;font-size:11px}.workspace-nav #refresh{margin-top:4px;padding-top:8px}#identity{padding-top:8px;font-size:11px}#logout{min-height:30px;padding:6px 12px}}
+@media(min-width:721px) and (max-height:480px){body>header .brand-logo{display:none}.workspace-nav{top:64px}.workspace-nav button{min-height:26px;padding:4px 12px}.workspace-nav #refresh{padding-top:6px}}
