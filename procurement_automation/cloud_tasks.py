@@ -55,16 +55,16 @@ def extract_one(store,mid=None):
 
 def import_step(store):
     """Persist each folder search and each fetched message, including UIDVALIDITY."""
-    from .job_import import mailbox_configs,state as import_state,assemble,reference
+    from .job_import import import_mailboxes,state as import_state,assemble,reference
     from .workflow import Workflow
     from .ingestion import ingest
     with store.connection() as c:task=c.execute("SELECT * FROM job_imports WHERE status IN ('queued','running') ORDER BY updated_at LIMIT 1").fetchone()
     if not task:return False
-    ref=reference(task['reference']);data=json.loads(task['data']);cursor=data.get('cursor',dict(term=0,mailbox=0,folder=0,terms=[ref]));configs=mailbox_configs()
+    ref=reference(task['reference']);data=json.loads(task['data']);cursor=data.get('cursor',dict(term=0,mailbox=0,folder=0,terms=[ref]))
     def save(status='running',**extra):
         data.update(extra,cursor=cursor);import_state(store,ref,status,**data)
     try:
-        if not configs:raise ValueError('Mailbox settings missing')
+        configs=import_mailboxes(data,task['actor'])
         # After all folders/terms, extract one remaining message per invocation before assembly.
         if cursor['term']>=len(cursor['terms']):
             pattern=re.compile(r'(?<!\w)'+re.escape(ref)+r'(?!\w)',re.I)
@@ -72,13 +72,13 @@ def import_step(store):
                 matches=[r['id'] for r in c.execute('SELECT id,data FROM messages') if not json.loads(r['data']).get('extracted') and pattern.search(json.loads(r['data']).get('subject','')+'\n'+json.loads(r['data']).get('body_full',json.loads(r['data']).get('body','')))]
             if matches:
                 extract_one(store,matches[0]);save(message='Extracting matched document evidence');return True
-            jid=assemble(store,Workflow(store),ref,task['actor'])
+            jid=assemble(store,Workflow(store),ref,task['actor'],owner=data.get('mailbox_user'))
             if jid:
                 with store.connection() as c:job=store.job(c,jid)
                 aliases=[reference(v) for v in [job.get('requisition_no'),job.get('client_reference'),job.get('company_reference')] if v and v not in cursor['terms'] and re.fullmatch(r'[A-Za-z0-9 ./_-]{3,100}',v)]
                 if aliases:
                     cursor['terms'].extend(dict.fromkeys(aliases));save(message='Searching related client and AP references',job_id=jid);return True
-            save('complete' if jid else 'not_found',job_id=jid,message='Evidence card ready; review extracted details.' if jid else 'No matching email found. Check the reference and mailbox folders.');return True
+            save('complete' if jid else 'not_found',job_id=jid or data.get('job_id'),message='Both required mailboxes scanned. Evidence card ready; review extracted details.' if jid else 'Both required mailboxes scanned; no matching email found. Check the reference and mailbox folders.');return True
         cfg=configs[cursor['mailbox']];folders=cfg.get('folders',['INBOX','Sent'])
         password=os.environ.get(cfg['password_env'],'')
         if not password:raise ValueError('Missing mailbox secret')
@@ -124,7 +124,7 @@ def import_step(store):
             save(message='Importing email evidence · '+str(data.get('email_occurrences',0))+' messages saved')
         return True
     except Exception as exc:
-        save('failed',message='Import paused. Check mailbox access/folders and retry; saved evidence is retained.',error_type=type(exc).__name__)
+        save('failed',message='Import paused. Both required mailboxes must complete. Check mailbox access/folders and retry; saved evidence is retained.',error_type=type(exc).__name__)
         return True
 
 

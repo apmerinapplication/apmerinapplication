@@ -38,7 +38,28 @@ def mailbox_configs():
         if accounting:configs.append(accounting)
     return configs
 
-def queue(store,ref,actor,refresh=False):
+def select_import_mailboxes(actor,configs):
+    """Select a person's mailbox and Nurul, never substitute another staff member."""
+    own=next((cfg for cfg in configs if cfg.get('user_id',cfg.get('id'))==actor),None)
+    accounting=next((cfg for cfg in configs if cfg.get('id') in ['nurul','accounting'] or cfg.get('username','').lower()=='nurul@apmerinservices.com.my'),None)
+    missing=[]
+    if not own:missing.append(actor)
+    if not accounting:missing.append('Nurul (accounting)')
+    if missing:raise ValueError('Connect the mailbox for '+', '.join(missing)+' before scanning this job. Both the responsible user and Nurul must be available.')
+    return [own]+([accounting] if accounting['id']!=own['id'] else [])
+
+
+def import_mailboxes(data,actor):
+    configs=mailbox_configs()
+    if not data.get('mailbox_ids'):
+        return select_import_mailboxes(data.get('mailbox_user',actor),configs)
+    indexed={cfg['id']:cfg for cfg in configs}
+    missing=[uid for uid in data['mailbox_ids'] if uid not in indexed]
+    if missing:raise ValueError('Required import mailbox is no longer connected: '+', '.join(missing))
+    return [indexed[uid] for uid in data['mailbox_ids']]
+
+
+def queue(store,ref,actor,refresh=False,mailbox_user=None):
     ref=reference(ref)
     with store.transaction() as c:
         job=existing(store,c,ref)
@@ -46,12 +67,18 @@ def queue(store,ref,actor,refresh=False):
         resumable=store.is_cloud and row and row['status']=='failed' and json.loads(row['data']).get('cursor')
         if job and not refresh and not resumable:return dict(reference=ref,status='complete',job_id=job['id'],message='Existing job opened; no duplicate created.')
         if row and (row['status'] in ['queued','running'] or row['status']=='complete' and not refresh):return dict(reference=ref,status=row['status'],**json.loads(row['data']))
-        if not mailbox_configs():raise ValueError('Mailbox monitoring is not configured on this server yet')
         resume=json.loads(row['data']) if store.is_cloud and row and row['status']=='failed' and not refresh else {}
-        resume.update(message='Queued for mailbox search',job_id=job['id'] if job else resume.get('job_id'))
+        scan_user=resume.get('mailbox_user') or mailbox_user or actor
+        if scan_user!=actor and not resume.get('mailbox_user'):
+            admin=c.execute("SELECT 1 FROM users WHERE id=? AND role='admin' AND active=1",(actor,)).fetchone()
+            target=c.execute("SELECT 1 FROM users WHERE id=? AND role='procurement' AND active=1",(scan_user,)).fetchone()
+            if not admin or not target:raise ValueError('Only an administrator can select another procurement mailbox')
+        selected=import_mailboxes(resume,scan_user) if resume.get('mailbox_ids') else select_import_mailboxes(scan_user,mailbox_configs())
+        labels=[cfg.get('name') or ('Nurul' if cfg['id'] in ['nurul','accounting'] else scan_user.title()) for cfg in selected]
+        resume.update(mailbox_user=scan_user,mailbox_ids=[cfg['id'] for cfg in selected],mailbox_names=labels,message='Queued to scan '+' + '.join(labels),job_id=job['id'] if job else resume.get('job_id'))
         c.execute('INSERT OR REPLACE INTO job_imports VALUES (?,?,?,?,?)',(ref,actor,'queued',json.dumps(resume),now()))
         store.event(c,None,actor,'reference_import_requested',dict(reference=ref))
-    return dict(reference=ref,status='queued',message='Queued for mailbox search')
+    return dict(reference=ref,status='queued',**resume)
 
 def state(store,ref,status,**data):
     with store.transaction() as c:c.execute('UPDATE job_imports SET status=?,data=?,updated_at=? WHERE reference=?',(status,json.dumps(data),now(),ref))
@@ -86,10 +113,11 @@ def run_pending(store,flow):
             if not c.execute("UPDATE job_imports SET status='running',updated_at=? WHERE reference=? AND status='queued'",(now(),ref)).rowcount:continue
         try:
             count=0
-            for cfg in mailbox_configs():
+            task_data=json.loads(task['data'])
+            for cfg in import_mailboxes(task_data,task['actor']):
                 password=os.environ.get(cfg['password_env'],'')
                 if not password:raise ValueError('Missing mailbox secret')
-                state(store,ref,'running',message='Connecting to '+cfg['id']+' mailbox',email_occurrences=count)
+                state(store,ref,'running',**dict(task_data,message='Connecting to '+cfg['id']+' mailbox',email_occurrences=count))
                 with imaplib.IMAP4_SSL(cfg['host'],int(cfg.get('port',993)),ssl_context=ssl.create_default_context(),timeout=180) as mail:
                     mail.login(cfg['username'],password)
                     folders=cfg.get('folders',['INBOX','Sent'])
@@ -103,7 +131,7 @@ def run_pending(store,flow):
                     terms=[ref]
                     for term in terms:
                         for folder in folders:
-                            state(store,ref,'running',message='Searching '+cfg['id']+' · '+folder.strip('"'),email_occurrences=count)
+                            state(store,ref,'running',**dict(task_data,message='Searching '+cfg['id']+' · '+folder.strip('"'),email_occurrences=count))
                             selected=folder if folder.startswith('"') else '"'+folder.replace('"','')+'"'
                             if mail.select(selected,readonly=True)[0]!='OK':raise RuntimeError('Folder unavailable')
                             validity=mail.response('UIDVALIDITY')[1][0].decode()
@@ -115,19 +143,19 @@ def run_pending(store,flow):
                                 if status!='OK':raise RuntimeError('Fetch failed')
                                 raw=next(p[1] for p in parts if isinstance(p,tuple))
                                 ingest(store,flow,raw,cfg['id'],folder.strip('"'),validity,int(uid),live_monitor=False);count+=1
-                            state(store,ref,'running',message='Searching mailbox folders',email_occurrences=count)
+                            state(store,ref,'running',**dict(task_data,message='Searching mailbox folders',email_occurrences=count))
                         if term==ref:
-                            discovered=assemble(store,flow,ref,task['actor'])
+                            discovered=assemble(store,flow,ref,task['actor'],owner=task_data.get('mailbox_user'))
                             if discovered:
                                 with store.connection() as c:job=store.job(c,discovered)
                                 for related in [job.get('requisition_no',''),job.get('company_reference',''),job.get('client_reference','')]:
                                     if related and related not in terms and len(related)<100 and re.fullmatch(r'[A-Za-z0-9 ./_-]+',related):terms.append(related)
-            result=assemble(store,flow,ref,task['actor'])
-            state(store,ref,'complete' if result else 'not_found',message='Evidence card ready; review extracted details before commercial use.' if result else 'No exact reference found in email subjects. Check reference or mailbox access.',job_id=result,email_occurrences=count)
+            result=assemble(store,flow,ref,task['actor'],owner=task_data.get('mailbox_user'))
+            state(store,ref,'complete' if result else 'not_found',**dict(task_data,message='Evidence card ready; review extracted details before commercial use.' if result else 'No exact reference found in email subjects. Check reference or mailbox access.',job_id=result or task_data.get('job_id'),email_occurrences=count))
         except Exception as exc:
-            state(store,ref,'failed',message='Import interrupted. Check mailbox connectivity and retry; saved emails are retained.',error_type=type(exc).__name__)
+            state(store,ref,'failed',**dict(json.loads(task['data']),message='Import interrupted. Both required mailboxes must complete. Check mailbox connectivity and retry; saved emails are retained.',error_type=type(exc).__name__))
 
-def assemble(store,flow,ref,actor):
+def assemble(store,flow,ref,actor,owner=None):
     pattern=re.compile(r'(?<!\w)'+re.escape(ref)+r'(?!\w)',re.I)
     with store.connection() as c:
         found=existing(store,c,ref)
@@ -150,6 +178,13 @@ def assemble(store,flow,ref,actor):
         row['data']=json.dumps(data)
     with store.connection() as c:found=existing(store,c,ref)
     if found:
+        # Existing manually created cards also receive exact, unambiguous evidence.
+        # Do not move evidence already assigned to another job or overwrite staff facts.
+        with store.transaction() as c:
+            for row in rows:
+                data=json.loads(row['data'])
+                if not row['job_id'] and not any(v!=found['id'] for v in data.get('candidates',[])):
+                    c.execute('UPDATE messages SET job_id=? WHERE id=? AND job_id IS NULL',(found['id'],row['id']))
         if found.get('import_review'):
             from .import_facts import enrich
             return enrich(store,ref,found['id'],actor)
@@ -180,7 +215,8 @@ def assemble(store,flow,ref,actor):
     with store.transaction() as c:
         job=existing(store,c,ref)
         if job:return job['id']
-        owner=actor if c.execute("SELECT 1 FROM users WHERE id=? AND role='procurement' AND active=1",(actor,)).fetchone() else ''
+        responsible=owner or actor
+        owner=responsible if c.execute("SELECT 1 FROM users WHERE id=? AND role='procurement' AND active=1",(responsible,)).fetchone() else ''
         jid='JC-'+datetime.now(ZoneInfo('Asia/Kuala_Lumpur')).strftime('%y')+'-'+uuid.uuid4().hex[:8].upper()
         payload=dict(company_reference=ref,client_name='Client details pending review',client_email='',vessel_name='Vessel pending review',requisition_no=ref,owner=owner,currency='MYR',items=[],sourcing='rfq_received',fulfilment='not_ordered',rfq_due_date='',notes='Reference import: review original RFQ, parties, quantities, quotation revisions and cross-job references. Commercial facts are not confirmed by email classification.',import_review=True)
         if not re.fullmatch(r'Q[0-9]{3,12}',ref):

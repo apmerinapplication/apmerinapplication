@@ -193,14 +193,26 @@ def create_app(directory=None, testing=False):
     @app.post('/api/jobs')
     @roles('admin','procurement')
     def create_job():
-        with store.transaction() as c:return jsonify(job=flow.create(c,request.get_json() or {},user()['id'])),201
+        actor=user()['id']
+        with store.transaction() as c:job=flow.create(c,request.get_json() or {},actor)
+        return jsonify(job=job,email_scan=scan_new_job(job,actor)),201
+
+    def scan_new_job(job,actor):
+        from .job_import import queue
+        try:
+            owner=job.get('owner') if actor=='admin' else None
+            return queue(store,job.get('company_reference') or job.get('client_reference') or job['requisition_no'],actor,True,mailbox_user=owner)
+        except ValueError as exc:
+            # The saved card remains usable even if email access needs configuring.
+            return dict(status='blocked',job_id=job['id'],message=str(exc))
 
     @app.route('/api/job-imports',methods=['GET','POST'])
     @roles('admin','procurement')
     def imports():
         from .job_import import queue
         if request.method=='POST':
-            result=queue(store,(request.get_json() or {}).get('reference'),user()['id'])
+            data=request.get_json() or {}
+            result=queue(store,data.get('reference'),user()['id'],mailbox_user=data.get('mailbox_user'))
             return jsonify(result),202
         from datetime import datetime,timezone
         with store.connection() as c:
@@ -239,7 +251,8 @@ def create_app(directory=None, testing=False):
         with store.connection() as c:
             job=flow.check_version(c,jid,(request.get_json() or {}).get('version'))
         if not job.get('import_review'):raise ValueError('This action is for automatically imported jobs')
-        return jsonify(queue(store,job.get('company_reference') or job.get('client_reference') or job['requisition_no'],user()['id'],True)),202
+        actor=user()['id']
+        return jsonify(queue(store,job.get('company_reference') or job.get('client_reference') or job['requisition_no'],actor,True,mailbox_user=job.get('owner') if actor=='admin' else None)),202
 
     @app.get('/api/jobs/<jid>')
     def detail(jid):
@@ -412,7 +425,11 @@ def create_app(directory=None, testing=False):
     @roles('admin','procurement')
     def review_message(mid):
         from .ingestion import approve_message
-        with store.transaction() as c:return jsonify(result=approve_message(store,flow,c,mid,request.get_json() or {},user()['id']))
+        data=request.get_json() or {};actor=user()['id']
+        with store.transaction() as c:
+            result=approve_message(store,flow,c,mid,data,actor)
+            job=store.job(c,c.execute('SELECT job_id FROM messages WHERE id=?',(mid,)).fetchone()[0]) if data.get('action')=='create' else None
+        return jsonify(result=result,email_scan=scan_new_job(job,actor) if job else None)
 
     @app.get('/api/attachments/<digest>')
     def attachment(digest):
