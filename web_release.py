@@ -1,4 +1,5 @@
 """Build and verify the web-only Vercel release from an explicit source allowlist."""
+import ast
 import hashlib
 import json
 import re
@@ -10,6 +11,19 @@ ROOT=Path(__file__).resolve().parent
 OUTPUT=ROOT/'deployment/AP_Merin_Web_Vercel.zip'
 
 
+def verify_dependencies(names):
+    names=set(names)
+    # This module is intentionally available only to the Windows local trial fallback.
+    local_only={('procurement_automation/job_import.py','procurement_automation/local_mailboxes.py')}
+    for name in names:
+        if not name.startswith('procurement_automation/') or not name.endswith('.py'):continue
+        for node in ast.walk(ast.parse(asset_bytes(ROOT/name).decode('utf-8-sig'))):
+            if isinstance(node,ast.ImportFrom) and node.level==1 and node.module:
+                target='procurement_automation/'+node.module.replace('.','/')+'.py'
+                if target not in names and (name,target) not in local_only:
+                    raise ValueError('Missing web runtime dependency: '+name+' -> '+target)
+
+
 def sources():
     names=json.loads((ROOT/'deployment/web_source_allowlist.json').read_text(encoding='utf-8'))
     if len(names)!=len(set(names)):raise ValueError('Duplicate web allowlist entry')
@@ -18,6 +32,7 @@ def sources():
         if p.is_absolute() or '..' in p.parts or p.suffix in ['.sqlite','.dpapi','.exe','.lnk','.zip','.bat','.command','.vbs'] or any(v in p.parts for v in ['scratch','shared_data','uploads','netlify','dist','build']):
             raise ValueError('Disallowed web source: '+name)
         if not (ROOT/p).is_file():raise ValueError('Missing web source: '+name)
+    verify_dependencies(names)
     return names
 
 

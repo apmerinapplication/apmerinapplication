@@ -4,7 +4,7 @@
   "deployment/WEB_VERCEL.md": "d89b11159c915cf161f9298667524b136dcbe868320e524925e01a0a04d7e8a5",
   "deployment/WEB_VERIFICATION.md": "69589b904854c9b4ac4c6c109a6fc4003c61d937a1467924a3a0a7060e880722",
   "deployment/web.env.example": "f31e2d5f01b56b98b4905c5c7791714e592dd6ae4ce6f2cfc6b2d58eef9a2cfe",
-  "deployment/web_source_allowlist.json": "c22fa0d8bcee2ec8721d2dafe3b93f1d865abc9e2eeddcb167651d94d7e5ee37",
+  "deployment/web_source_allowlist.json": "6e05d1a3caa2e181d8539e7bd9aed778025b4db92c07d5e3985436ee9066dc1d",
   "email_automation/mailer.py": "834cc1725e2c0f4424f3fbfe363b968e5a352942fe3dd036f4f64fccbaa13dc3",
   "extractor.py": "2f983637f28202d2a7a2f98ee824f661f1f8cecfba955a682c2b072069211e54",
   "gemini_vision.py": "bad909f05f6f2d8d5a7d463d0eec88da4e6d5802a8a2bdef676d3c75f9575034",
@@ -28,6 +28,7 @@
   "procurement_automation/mail_sync.py": "5344adac6c5a9105224c82bc3b7477eb71c92e2b9d16274efdceee431952df16",
   "procurement_automation/manage.py": "a5c1d61a647c75b71b604ec1ef34b4f9ee89031d81d92807b4c7082298373d91",
   "procurement_automation/package.py": "3725ce8125b5a19c5803b15e9e5ecace826e32dfb5962624f8e1173aa32a9e11",
+  "procurement_automation/payment_evidence.py": "18fd7608308c4dc053a8bca4e02bf58c031318faa23b1ab0035a42395f957ddb",
   "procurement_automation/postgres.py": "a7f6899e4730ac7622902f262e500406db7651cd9d1a2998afbccc0936b5405a",
   "procurement_automation/rfq_alerts.py": "ccdb9c2a8ad2d0bc2dc412ba7e3cf5abaeeb3ce2cd0631f1d3601a8e0848ed1a",
   "procurement_automation/rfq_identity.py": "0733fcb661cc95ed3ef97fc1f25987aafe8fc7d9a967492f0ff76ed38aef9d50",
@@ -109,5 +110,5 @@
   "sync_manager.py": "624d47629d22a1d26e33e0432753efe9caa5c91bfa49309ec38ac95d3059547b",
   "templates/index.html": "90349087b0cce53b25c3098cc06290c88f30159d0e2d48398e6fca80e257b63b",
   "vercel.json": "289cc22888582619ba9aaa07695258fe6717ba146a0d30742ab7f3c799746a03",
-  "web_release.py": "6e22c1db69db9a6b8d7808a38d48447a4a4d0d1608221e9314de4b738ff868ec"
+  "web_release.py": "37f08a5ffb953c3b1e4ce7a490dca5f2d6c0f53e01233be830b47bea6df9d286"
 }

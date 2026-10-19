@@ -28,6 +28,7 @@
   "procurement_automation/mail_sync.py",
   "procurement_automation/manage.py",
   "procurement_automation/package.py",
+  "procurement_automation/payment_evidence.py",
   "procurement_automation/postgres.py",
   "procurement_automation/rfq_alerts.py",
   "procurement_automation/rfq_identity.py",
