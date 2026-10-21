@@ -1,12 +1,13 @@
 """Authenticated shared dashboard; legacy client-provided roles are never trusted."""
 import json
+import hashlib
 import os
 import secrets
 import time
 from datetime import timedelta
 from functools import wraps
 from pathlib import Path
-from flask import Flask, jsonify, request, session, render_template, Response, send_file, redirect
+from flask import Flask, jsonify, request, session, render_template, Response, send_file, redirect, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from .store import Store, now, DashboardReadView
 from .workflow import Workflow, DEFAULT_POLICY
@@ -35,15 +36,14 @@ def create_app(directory=None, testing=False):
                 with os.fdopen(fd,'w') as f:f.write(secrets.token_hex(32))
             except FileExistsError:pass
         key=path.read_text()
-    app.config.update(SECRET_KEY=key,TESTING=testing,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Strict',SESSION_COOKIE_SECURE=os.environ.get('APMERIN_HTTPS')=='1',PERMANENT_SESSION_LIFETIME=timedelta(hours=8),MAX_CONTENT_LENGTH=(4 if store.is_cloud else 25)*1024*1024)
+    app.config.update(SECRET_KEY=key,TESTING=testing,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Strict',SESSION_COOKIE_SECURE=os.environ.get('APMERIN_HTTPS')=='1',SESSION_REFRESH_EACH_REQUEST=False,PERMANENT_SESSION_LIFETIME=timedelta(hours=8),MAX_CONTENT_LENGTH=(4 if store.is_cloud else 25)*1024*1024)
     app.extensions.update(workflow_store=store,workflow=flow)
 
     @app.before_request
     def security():
         if request.path.startswith('/static/') or request.path in ['/','/api/login','/api/session','/health','/api/internal/tick']:
             return
-        with store.connection() as c:
-            u=c.execute('SELECT id,name,role FROM users WHERE id=? AND active=1',(session.get('uid',''),)).fetchone()
+        u=user()
         if not u:return jsonify(error='Sign in required'),401
         if request.method not in ['GET','HEAD','OPTIONS'] and not secrets.compare_digest(request.headers.get('X-CSRF-Token',''),session.get('csrf','!')):
             return jsonify(error='Invalid request token'),403
@@ -58,9 +58,17 @@ def create_app(directory=None, testing=False):
         return response
 
     def user():
+        if hasattr(g,'workflow_user'):return g.workflow_user
+        g.workflow_user=None
+        sid=session.get('sid');uid=session.get('uid')
+        if not uid or not isinstance(sid,str) or not 32<=len(sid)<=128:return None
         with store.connection() as c:
-            u=c.execute('SELECT id,name,role FROM users WHERE id=? AND active=1',(session.get('uid',''),)).fetchone()
-            return dict(u) if u else None
+            row=c.execute('SELECT data FROM worker_state WHERE key=?',('auth_session:'+hashlib.sha256(sid.encode()).hexdigest(),)).fetchone()
+            auth=json.loads(row['data']) if row else {}
+            if auth.get('uid')!=uid or auth.get('expires',0)<=time.time():return None
+            u=c.execute('SELECT id,name,role FROM users WHERE id=? AND active=1',(uid,)).fetchone()
+            g.workflow_user=dict(u) if u else None
+            return g.workflow_user
 
     def roles(*allowed):
         def decorate(fn):
@@ -114,7 +122,11 @@ def create_app(directory=None, testing=False):
                 c.execute('INSERT OR REPLACE INTO login_attempts VALUES (?,?,?)',(attempt,count,time.time()))
                 return jsonify(error='Invalid account or password'),401
             c.execute('DELETE FROM login_attempts WHERE key=?',(attempt,))
-        session.clear();session['uid']=u['id'];session['csrf']=secrets.token_urlsafe(32);session.permanent=True
+            previous=session.get('sid')
+            if isinstance(previous,str):c.execute('DELETE FROM worker_state WHERE key=?',('auth_session:'+hashlib.sha256(previous.encode()).hexdigest(),))
+            sid=secrets.token_urlsafe(32)
+            c.execute('INSERT INTO worker_state VALUES (?,?)',('auth_session:'+hashlib.sha256(sid.encode()).hexdigest(),json.dumps(dict(uid=u['id'],expires=time.time()+8*60*60))))
+        session.clear();session['uid']=u['id'];session['sid']=sid;session['csrf']=secrets.token_urlsafe(32);session.permanent=True
         from .mail_sync import presence
         presence(store,u['id'],True)
         return jsonify(user=dict(id=u['id'],name=u['name'],role=u['role']),csrf=session['csrf'])
@@ -124,7 +136,9 @@ def create_app(directory=None, testing=False):
 
     @app.post('/api/logout')
     def logout():
-        with store.transaction() as c:c.execute('DELETE FROM worker_state WHERE key=?',('presence:'+session.get('uid',''),))
+        with store.transaction() as c:
+            c.execute('DELETE FROM worker_state WHERE key=?',('presence:'+session.get('uid',''),))
+            c.execute('DELETE FROM worker_state WHERE key=?',('auth_session:'+hashlib.sha256(session['sid'].encode()).hexdigest(),))
         session.clear();return jsonify(success=True)
 
     @app.route('/api/mail-sync',methods=['GET','POST'])

@@ -4,7 +4,7 @@ let lastMailCheck='',cloudEnabled=false,cloudTickTimer;
 async function checkMail(check=false){if(!account)return;const s=await api('/mail-sync',check?'POST':'GET',check?{check:true}:undefined,{quiet:!check});cloudEnabled=s.serverless===true;const el=$('mailSyncStatus');if(!el)return;const time=s.completed_at?new Intl.DateTimeFormat('en-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}).format(new Date(s.completed_at)):'';el.textContent=s.mailbox_configured===false?'Email connection is not configured. An administrator must connect the mailbox before imports can start.':s.status==='queued'?'Email check queued…':s.status==='running'?'Checking Inbox and Sent emails…':s.status==='error'?'Email check failed. See Administration or try again.':time?'Emails checked '+time+' · checks every 10 minutes while signed in':'Email monitoring ready · checks on login and every 10 minutes';if(s.serverless&&s.mailbox_configured!==false&&(s.pending_imports||['queued','running'].includes(s.status)))void cloudTick();if(s.completed_at&&s.completed_at!==lastMailCheck){const hadPrevious=!!lastMailCheck;lastMailCheck=s.completed_at;if(hadPrevious)await refresh();}}
 $('checkMailNow').onclick=run(()=>checkMail(true));
 const priorSignedIn=signedIn;
-signedIn=async function(data){await priorSignedIn(data);if(account){await api('/mail-sync','POST',{check:true});await checkMail();}};
+signedIn=async function(data){const epoch=authEpoch;await priorSignedIn(data);if(account&&epoch===authEpoch){await api('/mail-sync','POST',{check:true});await checkMail();}};
 setInterval(()=>{if(account)run(()=>api('/mail-sync','POST',{check:false},{quiet:true}))();},60000);
 setInterval(()=>{if(account)run(()=>checkMail(true))();},600000);
 setInterval(()=>{if(account)run(()=>checkMail())();},10000);
@@ -19,6 +19,7 @@ function transferForm(){const j=current.job;showEditor('Transfer job · '+(j.com
 function renderRfqAlerts(messages){const incoming=messages.filter(m=>m.new_rfq===true&&!m.job_id);$('rfqAlerts').innerHTML=incoming.length?`<article class="rfq-alert"><strong>${incoming.length} new client RFQ(s) awaiting review</strong><p>Review the client request, identify the vessel and assign the job.</p><button id="openNewRfqs">Review new RFQs</button></article>`:'';if($('openNewRfqs'))$('openNewRfqs').onclick=()=>tab('review','new');}
 const completedImports=new Map(),seenImportNotices=new Set();
 let importNoticeAccount='',importLoadRunning=false,latestImports=[];
+function resetOperationalState(){clearTimeout(cloudTickTimer);allReminders=[];lastMailCheck='';cloudEnabled=false;latestImports=[];completedImports.clear();seenImportNotices.clear();importNoticeAccount='';}
 function renderImports(imports=[]){
  const live=imports.filter(i=>i.status!=='complete');
  for(const i of live)completedImports.delete(i.reference);
@@ -54,14 +55,13 @@ let cloudTickRunning=false;
 async function cloudTick(){
  if(cloudTickRunning||!account)return;
  cloudTickRunning=true;clearTimeout(cloudTickTimer);
- let continueSoon=false;
+ const epoch=authEpoch;let continueSoon=false;
  try{
-  const response=await fetch(prefix+'/api/automation/tick',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:'{}'});
-  const data=await response.json();
-  if(!response.ok||data.status==='error')throw new Error(data.error||'Background check failed');
+  const data=await api('/automation/tick','POST',{}, {quiet:true});
+  if(data.status==='error')throw new Error(data.error||'Background check failed');
   if(data.changed&&account)await refresh();
   await loadImports();
   continueSoon=data.status==='ok'&&latestImports.some(i=>['queued','running'].includes(i.status));
- }catch(error){if($('mailSyncStatus'))$('mailSyncStatus').textContent='Email processing needs attention. Check Administration or retry.';}
- finally{cloudTickRunning=false;if(continueSoon&&account)cloudTickTimer=setTimeout(()=>void cloudTick(),500);}
+ }catch(error){if(error.name!=='SessionChangedError'&&$('mailSyncStatus'))$('mailSyncStatus').textContent='Email processing needs attention. Check Administration or retry.';}
+ finally{cloudTickRunning=false;if(continueSoon&&account&&epoch===authEpoch)cloudTickTimer=setTimeout(()=>void cloudTick(),500);}
 }
