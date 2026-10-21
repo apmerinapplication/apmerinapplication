@@ -20,6 +20,7 @@ class DashboardReadView:
         self.record_rows={jid:[] for jid in self.job_rows}
         for row in connection.execute('SELECT * FROM records ORDER BY created_at'):
             self.record_rows.setdefault(row['job_id'],[]).append(dict(row))
+        self.reminder_actions={r['id']:dict(r) for r in connection.execute('SELECT * FROM reminder_actions')}
 
     def execute(self,query,args=()):
         if not query.lstrip().upper().startswith('SELECT '):

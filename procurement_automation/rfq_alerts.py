@@ -16,13 +16,14 @@ def request_key(data):
 
 def group_alerts(store,c,messages,at=None):
     at=at or datetime.now(timezone.utc)
-    jobs=[store.job(c,r[0]) for r in c.execute('SELECT id FROM jobs')]
+    jobs=[store.job(c,jid) for jid in c.job_rows] if hasattr(c,'job_rows') else [store.job(c,r[0]) for r in c.execute('SELECT id FROM jobs')]
     clients=set(store.setting('client_emails',[],c))|{j.get('client_email','').lower() for j in jobs if '@' in j.get('client_email','')}
     client_domains={a.split('@')[-1] for a in clients}
     suppliers={json.loads(r[0]).get('supplier_email','').lower() for r in c.execute("SELECT data FROM records WHERE kind IN ('supplier_rfq','supplier_po','supplier_quote')")}
     # Outgoing RFQ recipients identify suppliers even before a job has been reviewed.
     supplier_sql="jsonb_build_object('direction',data::jsonb->'direction','subject',data::jsonb->'subject','recipients',data::jsonb->'recipients')::text AS data" if store.is_cloud else 'data'
-    for r in c.execute('SELECT '+supplier_sql+' FROM messages'):
+    supplier_filter=" WHERE data::jsonb->>'direction'='sent' AND data::jsonb->>'subject' ~* '^RFQ\\y'" if store.is_cloud else ''
+    for r in c.execute('SELECT '+supplier_sql+' FROM messages'+supplier_filter):
         d=json.loads(r[0])
         if d.get('direction')=='sent' and re.match(r'^RFQ\b',d.get('subject',''),re.I):
             suppliers.update(a for a in (d.get('recipients') or []) if not a.endswith('@apmerinservices.com.my') and a.split('@')[-1] not in client_domains)

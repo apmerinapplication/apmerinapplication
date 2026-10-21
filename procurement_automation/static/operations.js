@@ -1,13 +1,13 @@
 /* Team ownership, reference imports and daily work. */
 let allReminders=[];
 let lastMailCheck='',cloudEnabled=false,cloudTickTimer;
-async function checkMail(check=false){if(!account)return;const s=await api('/mail-sync',check?'POST':'GET',check?{check:true}:undefined,{quiet:!check});cloudEnabled=s.serverless===true;const el=$('mailSyncStatus');if(!el)return;const time=s.completed_at?new Intl.DateTimeFormat('en-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}).format(new Date(s.completed_at)):'';el.textContent=s.mailbox_configured===false?'Email connection is not configured. An administrator must connect the mailbox before imports can start.':s.status==='queued'?'Email check queued…':s.status==='running'?'Checking Inbox and Sent emails…':s.status==='error'?'Email check failed. See Administration or try again.':time?'Emails checked '+time+' · checks every 10 minutes while signed in':'Email monitoring ready · checks on login and every 10 minutes';if(s.serverless&&s.mailbox_configured!==false&&(s.pending_imports||['queued','running'].includes(s.status)))void cloudTick();if(s.completed_at&&s.completed_at!==lastMailCheck){const hadPrevious=!!lastMailCheck;lastMailCheck=s.completed_at;if(hadPrevious)await refresh();}}
+async function checkMail(check=false){if(!account)return;const s=await api('/mail-sync',check?'POST':'GET',check?{check:true}:undefined,{quiet:!check});cloudEnabled=s.serverless===true;const el=$('mailSyncStatus');if(!el)return;const time=s.completed_at?new Intl.DateTimeFormat('en-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}).format(new Date(s.completed_at)):'';el.textContent=s.mailbox_configured===false?'Email connection is not configured. An administrator must connect the mailbox before imports can start.':s.status==='queued'?'Email check queued…':s.status==='running'?'Checking Inbox and Sent emails…':s.status==='error'?'Email check failed. See Administration or try again.':time?'Emails checked '+time+' · checks every 10 minutes while signed in':'Email monitoring ready · checks on login and every 10 minutes';if(s.serverless&&s.mailbox_configured!==false&&(s.pending_imports||['queued','running'].includes(s.status)))void cloudTick();if(s.completed_at&&s.completed_at!==lastMailCheck){const hadPrevious=!!lastMailCheck;lastMailCheck=s.completed_at;if(hadPrevious)await refresh({quiet:true});}}
 $('checkMailNow').onclick=run(()=>checkMail(true));
 const priorSignedIn=signedIn;
 signedIn=async function(data){const epoch=authEpoch;await priorSignedIn(data);if(account&&epoch===authEpoch){await api('/mail-sync','POST',{check:true});await checkMail();}};
 setInterval(()=>{if(account)run(()=>api('/mail-sync','POST',{check:false},{quiet:true}))();},60000);
 setInterval(()=>{if(account)run(()=>checkMail(true))();},600000);
-setInterval(()=>{if(account)run(()=>checkMail())();},10000);
+setInterval(()=>{if(account&&!document.hidden)run(()=>checkMail())();},10000);
 function showImportSuggestions(j){const section=document.createElement('section');section.className='trial-caution';const drafts=j.suggested_items||[];section.innerHTML=`<h3>Imported evidence · review required</h3><p>${current.messages.length} linked emails. Verify the client, vessel, requisition, item quantities and quotation revisions against the originals before using commercial details.</p>${drafts.length?`<p>${drafts.length} item suggestions from labelled RFQ tables.</p><button id="reviewImportedItems">Review suggested items</button>`:'<p>No reliable RFQ item table detected. Use Review RFQ items after checking the original request.</p>'}<details><summary>Locally extracted document content</summary>${current.messages.flatMap(m=>(m.extractions||[]).map(e=>`<article><strong>${esc(m.attachments?.find(a=>a.hash===e.hash)?.filename||'Document')}</strong><p>${esc(m.subject)}</p>${e.text?`<pre>${esc(e.text)}</pre>`:'<p>Scanned document or unsupported file — review the original preview.</p>'}</article>`)).join('')||'<p>No document text found.</p>'}</details>`;$('dialogContent').prepend(section);if($('reviewImportedItems'))$('reviewImportedItems').onclick=editItems;}
 function malaysiaToday(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
 function filterTasks(reminders){const scope=$('taskScope')?.value||'today',today=malaysiaToday();const filtered=reminders.filter(r=>scope==='team'||r.mine&&(scope==='mine'||r.due_date<=today));if($('taskSummary'))$('taskSummary').textContent=filtered.length+' pending · Malaysia '+today;return filtered;}
@@ -46,7 +46,7 @@ async function loadImports(){
   if(notices.length)await api('/job-imports/seen','POST',{notices},{quiet:true});
  }finally{importLoadRunning=false;}
 }
-setInterval(()=>{if(account)run(loadImports)();},5000);
+setInterval(()=>{if(account&&!document.hidden)run(loadImports)();},5000);
 const baseRenderActions=renderActions;
 renderActions=function(reminders){baseRenderActions(reminders);$('actions').querySelectorAll('[data-snooze]').forEach(b=>{const reminder=reminders.find(r=>r.id===b.dataset.snooze);if(!reminder?.id.includes(':review:'))return;const button=document.createElement('button');button.textContent='Complete review';b.after(button);button.onclick=run(async()=>{const detail=await api('/jobs/'+reminder.job_id);showEditor('Complete review task',`<p>${esc(reminder.title)}</p><form id="completeTask"><label>Outcome / evidence<textarea name="evidence" required></textarea></label><p class="muted">Completing a review task does not confirm delivery, invoicing or payment.</p><button>Complete task</button></form>`);$('completeTask').onsubmit=run(async e=>{e.preventDefault();await api('/jobs/'+reminder.job_id+'/review-tasks/'+reminder.id.split(':review:')[1]+'/resolve','POST',{version:detail.job.version,...Object.fromEntries(new FormData(e.target))});$('editor').close();await refresh();});});});};
 
@@ -59,7 +59,7 @@ async function cloudTick(){
  try{
   const data=await api('/automation/tick','POST',{}, {quiet:true});
   if(data.status==='error')throw new Error(data.error||'Background check failed');
-  if(data.changed&&account)await refresh();
+  if(data.changed&&account)await refresh({quiet:true});
   await loadImports();
   continueSoon=data.status==='ok'&&latestImports.some(i=>['queued','running'].includes(i.status));
  }catch(error){if(error.name!=='SessionChangedError'&&$('mailSyncStatus'))$('mailSyncStatus').textContent='Email processing needs attention. Check Administration or retry.';}

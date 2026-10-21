@@ -4,7 +4,7 @@ import hashlib
 import os
 import secrets
 import time
-from datetime import timedelta
+from datetime import timedelta,datetime,timezone
 from functools import wraps
 from pathlib import Path
 from flask import Flask, jsonify, request, session, render_template, Response, send_file, redirect, g
@@ -24,6 +24,7 @@ def create_app(directory=None, testing=False):
     # Avoid transferring megabytes of Outlook HTML from Postgres for every list/card.
     metadata_sql="(data::jsonb - 'body_html' - 'identity_body')::text" if store.is_cloud else 'data'
     review_sql="(data::jsonb - 'body_html' - 'identity_body' - 'body_full')::text" if store.is_cloud else 'data'
+    list_sql="(data::jsonb - ARRAY['body_html','identity_body','body','body_full'])::text" if store.is_cloud else 'data'
     key=os.environ.get('APMERIN_SESSION_SECRET')
     if key and (len(key)<32 or key.startswith('REPLACE_')):
         raise ValueError('Configure a random session secret of at least 32 characters')
@@ -41,6 +42,7 @@ def create_app(directory=None, testing=False):
 
     @app.before_request
     def security():
+        g.request_started=time.perf_counter()
         if request.path.startswith('/static/') or request.path in ['/','/api/login','/api/session','/health','/api/internal/tick']:
             return
         u=user()
@@ -55,6 +57,7 @@ def create_app(directory=None, testing=False):
         response.headers['Referrer-Policy']='same-origin'
         response.headers.setdefault('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'")
         if request.path.startswith('/api/'):response.headers['Cache-Control']='no-store'
+        if hasattr(g,'request_started'):response.headers['Server-Timing']='app;dur='+str(round((time.perf_counter()-g.request_started)*1000,1))
         return response
 
     def user():
@@ -190,23 +193,42 @@ def create_app(directory=None, testing=False):
             store.event(c,None,user()['id'],'account_updated',dict(id=uid,role=role))
         return jsonify(success=True)
 
+    def job_cards(c):
+        message_rows={jid:[] for jid in c.job_rows}
+        for r in c.execute(f'SELECT id,job_id,{list_sql} AS data FROM messages WHERE job_id IS NOT NULL'):
+            message_rows.setdefault(r['job_id'],[]).append(dict(id=r['id'],**json.loads(r['data'])))
+        result=[]
+        from .workflow import effective_owner
+        from .dashboard_details import details
+        from .staff_confirmation import summary as staff_summary
+        for row in sorted(c.job_rows.values(),key=lambda r:r['updated_at'],reverse=True):
+            j=store.job(c,row['id']);j['finance']=flow.finance(c,j)
+            messages=message_rows.get(j['id'],[])
+            j['client_po_references']=details(store,c,j,store.records(c,j['id']),messages,references_only=True)['client_po_references']
+            j['staff_status']=staff_summary(store,flow,c,j,messages);j['effective_owner']=effective_owner(j);result.append(j)
+        return result
+
+    def pending_rfq_alerts(c):
+        from .rfq_alerts import group_alerts
+        cloud_filter=" AND data::jsonb->>'direction'='received' AND data::jsonb->>'live_monitor'='true'" if store.is_cloud else ''
+        messages=[]
+        for r in c.execute(f"SELECT id,status,created_at,job_id,{review_sql} AS data FROM messages WHERE job_id IS NULL AND status IN ('review','ai_pending')"+cloud_filter):
+            data=json.loads(r['data'])
+            if data.get('direction')!='received' or data.get('live_monitor') is not True:continue
+            messages.append(dict(data,id=r['id'],status=r['status'],created_at=r['created_at'],job_id=r['job_id']))
+        return group_alerts(store,c,messages)
+
     @app.get('/api/jobs')
     def jobs():
+        with store.connection() as c:return jsonify(jobs=job_cards(DashboardReadView(c)))
+
+    @app.get('/api/workspace')
+    def workspace():
+        actor=user()
         with store.connection() as c:
-            c=DashboardReadView(c)
-            message_rows={jid:[] for jid in c.job_rows}
-            for r in c.execute(f'SELECT id,job_id,{metadata_sql} AS data FROM messages WHERE job_id IS NOT NULL'):
-                message_rows.setdefault(r['job_id'],[]).append(dict(id=r['id'],**json.loads(r['data'])))
-            result=[]
-            for row in c.execute('SELECT id FROM jobs ORDER BY updated_at DESC'):
-                j=store.job(c,row[0]);j['finance']=flow.finance(c,j)
-                from .workflow import effective_owner
-                from .dashboard_details import details
-                messages=message_rows.get(j['id'],[])
-                j['client_po_references']=details(store,c,j,store.records(c,j['id']),messages,references_only=True)['client_po_references']
-                from .staff_confirmation import summary as staff_summary
-                j['staff_status']=staff_summary(store,flow,c,j,messages);j['effective_owner']=effective_owner(j);result.append(j)
-        return jsonify(jobs=result)
+            view=DashboardReadView(c)
+            return jsonify(jobs=job_cards(view),users=[dict(r) for r in c.execute('SELECT id,name,role,active FROM users')],
+                reminders=flow.reminders(view,actor),rfq_alerts=pending_rfq_alerts(view) if actor['role']!='accounting' else [])
 
     @app.post('/api/jobs')
     @roles('admin','procurement')
@@ -541,12 +563,24 @@ def create_app(directory=None, testing=False):
     @roles('admin')
     def automation():
         with store.connection() as c:
-            states={r['key']:json.loads(r['data']) for r in c.execute('SELECT * FROM worker_state')}
-            checkpoints=[dict(r) for r in c.execute('SELECT * FROM checkpoints')]
-            usage=[dict(r) for r in c.execute('SELECT * FROM ai_usage')]
+            states={r['key']:json.loads(r['data']) for r in c.execute("SELECT * FROM worker_state WHERE key='mail_sync' OR key='cloud_tick' OR key LIKE 'mailbox:%'")}
+            month=datetime.now(timezone.utc).strftime('%Y-%m')
+            row=c.execute('SELECT month,spent,reserved FROM ai_usage WHERE month=?',(month,)).fetchone()
+            usage=dict(row) if row else dict(month=month,spent=0,reserved=0)
             from .ai_credentials import key as ai_key
             from .ai import MODEL
-            return jsonify(ai=dict(configured=bool(ai_key(store)),provider='Gemini',model=MODEL),states=states,checkpoints=checkpoints,ai_usage=usage,ai_cap_usd=10,mode=store.setting('automation_mode','review',c))
+            from .job_import import mailbox_configs
+            fields=['status','processed','last_attempt','completed_at','started_at','at','duration_seconds']
+            def safe_state(value):return {k:value[k] for k in fields if k in value}
+            sync=safe_state(states.get('mail_sync',{}))
+            try:sync['stale']=sync.get('status')=='running' and (datetime.now(timezone.utc)-datetime.fromisoformat(sync['started_at'])).total_seconds()>600
+            except (ValueError,KeyError,TypeError):sync['stale']=False
+            mailboxes=[dict(id=cfg['id'],address=cfg.get('username',''),folders=cfg.get('folders',[]),**safe_state(states.get('mailbox:'+cfg['id'],{}))) for cfg in mailbox_configs()]
+            return jsonify(ai=dict(configured=bool(ai_key(store)),provider='Gemini',model=MODEL),sync=sync,
+                worker=safe_state(states.get('cloud_tick',{})),mailboxes=mailboxes,ai_usage=usage,ai_cap_usd=10,
+                database='connected' if store.is_cloud else 'local_preview',storage='configured' if store.is_cloud and os.environ.get('APMERIN_SUPABASE_SERVICE_KEY') else 'local_preview',
+                mode=store.setting('automation_mode','review',c),policy=store.setting('policy',DEFAULT_POLICY,c),
+                users=[dict(r) for r in c.execute('SELECT id,name,role,active FROM users')])
 
     @app.put('/api/automation')
     @roles('admin')

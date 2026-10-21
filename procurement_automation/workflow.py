@@ -330,7 +330,7 @@ class Workflow:
             if finance and user['role']=='procurement':return
             if not finance and user['role']=='accounting':return
             rid=job['id']+':'+key
-            action=c.execute('SELECT * FROM reminder_actions WHERE id=?',(rid,)).fetchone()
+            action=c.reminder_actions.get(rid) if hasattr(c,'reminder_actions') else c.execute('SELECT * FROM reminder_actions WHERE id=?',(rid,)).fetchone()
             if action and action['until_date'] and day(action['until_date'])>today:return
             owner=effective_owner(job,today)
             result.append(dict(id=rid,job_id=job['id'],title=title,due_date=str(due),overdue=due<today,owner='accounting' if finance else owner,mine=user['role']=='admin' or finance or owner==user['id'],escalated=due<today,evidence=evidence))

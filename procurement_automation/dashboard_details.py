@@ -36,7 +36,7 @@ def document_currency(text):
 def details(store,c,job,records,messages,references_only=False):
     summary=job.get('trial_review') or job.get('import_summary') or {}
     docs=[];seen=set();client_pos=[];detected=[]
-    company_refs={json.loads(r[0]).get('company_reference','').upper() for r in c.execute('SELECT data FROM jobs')}
+    company_refs=set() if references_only else {json.loads(r[0]).get('company_reference','').upper() for r in c.execute('SELECT data FROM jobs')}
     for r in records:
         if r['kind']=='client_po' and r.get('reference'):client_pos.append(dict(reference=r['reference'],evidence=r.get('evidence',''),verified=True))
     for fact in summary.get('facts',[]):
